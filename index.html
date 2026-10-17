@@ -1,0 +1,2315 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Lexicard</title>
+<meta name="description" content="English-English vocabulary flashcards with spaced repetition.">
+<meta name="theme-color" content="#23867A">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+:root { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+body { margin: 0; }
+img { max-width: 100%; }
+[hidden] { display: none !important; }
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400..700;1,6..72,400..600&family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one narrow column; the study card is a ruled index card (red header rule, blue lines on the back), each deck has its own color */
+:root {
+  color-scheme: light;
+  --bg: #E3EEE9;
+  --paper: #FBFDFC;
+  --ink: #223140;
+  --muted: #5C6D79;
+  --edge: #C7D8D0;
+  --line: #CDE0EE;
+  --rule: #E2566C;
+  --accent: #23867A;
+  --accent-ink: #FFFFFF;
+  --soft: #D3E3DC;
+  --good: #2E8F5B; --good-bg: #DCF1E4;
+  --warn: #B87414; --warn-bg: #FBEED6;
+  --bad: #CF4660;  --bad-bg: #FBE2E7;
+  --glow-a: #FCE3D3;
+  --glow-b: #D6E6FA;
+  --shadow: 0 1px 0 rgba(34,49,64,.04), 0 12px 30px -14px rgba(34,49,64,.28);
+  --f-display: "Newsreader", "Iowan Old Style", Georgia, serif;
+  --f-body: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --header: rgba(227,238,233,.86);
+  --heat0: #D3E3DC; --heat1: #B3DCD1; --heat2: #7CC4B5; --heat3: #43A291; --heat4: #23867A;
+}
+/* The page picks its own theme with the moon button, whatever the browser or Claude app theme is */
+:root, :root[data-theme] { color-scheme: light; }
+/* Night theme, chosen with the moon button (kept per device) */
+:root[data-mode="dark"] {
+  color-scheme: dark;
+  --bg: #17232B;
+  --paper: #213039;
+  --ink: #E3ECEE;
+  --muted: #9AAFB8;
+  --edge: #33454F;
+  --line: #2C4250;
+  --rule: #F07C8E;
+  --accent: #4FC2B1;
+  --accent-ink: #0C2622;
+  --soft: #22323B;
+  --good: #6FD39C; --good-bg: #1E3A2D;
+  --warn: #F1BA5C; --warn-bg: #3A3121;
+  --bad: #F38799;  --bad-bg: #3D2530;
+  --glow-a: #2B2634;
+  --glow-b: #173444;
+  --shadow: 0 1px 0 rgba(0,0,0,.2), 0 14px 32px -14px rgba(0,0,0,.6);
+  --header: rgba(23,35,43,.86);
+  --heat0: #22323B; --heat1: #24504A; --heat2: #2F7A6E; --heat3: #3EA090; --heat4: #4FC2B1;
+}
+* { box-sizing: border-box; }
+body {
+  overflow-x: hidden; overflow-x: clip;
+  overscroll-behavior-y: contain; /* no accidental pull-to-refresh while swiping cards */
+  background: radial-gradient(1100px 560px at 105% -8%, var(--glow-a) 0, transparent 62%), radial-gradient(900px 520px at -12% 108%, var(--glow-b) 0, transparent 60%), var(--bg);
+  background-attachment: fixed;
+  color: var(--ink);
+  font-family: var(--f-body); font-size: 16px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0 40px;
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+.app { max-width: 620px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+button, input, textarea, select { font: inherit; color: inherit; }
+/* Dropdowns: set text and background explicitly so the browser's dark mode can't turn the text white */
+select.inp, select.inp option { color: var(--ink); background-color: var(--paper); }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Header */
+.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--header); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); padding-block: 14px 10px; display: flex; flex-direction: column; gap: 12px; }
+.brandrow { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.brand { font-family: var(--f-display); font-size: 26px; font-weight: 600; letter-spacing: -.01em; }
+.brand em { font-style: italic; font-weight: 400; color: var(--accent); }
+.sync { font-family: var(--f-mono); font-size: 11.5px; color: var(--muted); display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.sync::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
+.sync[data-s="ok"]::before { background: var(--good); }
+.sync[data-s="busy"]::before { background: var(--warn); }
+.sync[data-s="off"]::before { background: var(--bad); }
+.tabs { display: grid; grid-template-columns: repeat(3, 1fr); background: var(--soft); border-radius: 10px; padding: 3px; gap: 3px; }
+.tab { border: 0; background: transparent; padding: 9px 6px; border-radius: 8px; font-weight: 600; font-size: 14.5px; color: var(--muted); display: flex; justify-content: center; align-items: center; gap: 7px; }
+.tab[aria-selected="true"] { background: var(--paper); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+.badge { font-family: var(--f-mono); font-size: 11px; font-weight: 500; background: var(--rule); color: #fff; border-radius: 999px; padding: 1px 7px; font-variant-numeric: tabular-nums; }
+
+/* Study */
+.meta { display: flex; justify-content: space-between; align-items: center; font-size: 13.5px; color: var(--muted); font-variant-numeric: tabular-nums; min-height: 22px; gap: 10px; }
+.meta strong { color: var(--ink); font-weight: 600; }
+.bar { height: 3px; background: var(--soft); border-radius: 3px; overflow: hidden; }
+.bar > i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .3s; }
+.stage { position: relative; }
+.swiper { position: relative; perspective: 1500px; touch-action: pan-y; user-select: none; -webkit-user-select: none; will-change: transform; }
+.swiper.dragging, .swiper.dragging .card { cursor: grabbing; }
+.stamp { position: absolute; top: 72px; z-index: 3; pointer-events: none; font-family: var(--f-mono); font-size: 13px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; padding: 6px 10px; border: 2px solid currentColor; border-radius: 6px; background: var(--paper); opacity: 0; }
+.stamp.good { left: 18px; color: var(--good); transform: rotate(-9deg); }
+.stamp.again { right: 18px; color: var(--bad); transform: rotate(9deg); }
+.card.noanim { transition: none; }
+.card, .face, .frontbody, .backbody { touch-action: pan-y; }
+.face { border-top: 5px solid var(--dc, var(--accent)); }
+.whead { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.wpos { font-family: var(--f-display); font-style: italic; font-size: 19px; color: var(--rule); }
+.card { position: relative; height: clamp(320px, 54vh, 440px); transform-style: preserve-3d; transition: transform .55s cubic-bezier(.2,.75,.2,1); cursor: pointer; outline: none; }
+.card.flipped { transform: rotateY(180deg); }
+.card:focus-visible .face { outline: 2px solid var(--accent); outline-offset: 3px; }
+.face { position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden; background: var(--paper); border: 1px solid var(--edge); border-radius: 6px; box-shadow: var(--shadow); display: flex; flex-direction: column; overflow: hidden; }
+.back { transform: rotateY(180deg); }
+.cardhead { flex: none; height: 54px; padding: 0 20px; display: flex; align-items: center; justify-content: space-between; gap: 10px; border-bottom: 2px solid var(--rule); }
+.tag { font-family: var(--f-mono); font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.tag b { font-weight: 500; color: var(--rule); }
+.chip { font-family: var(--f-mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); border: 1px solid var(--edge); border-radius: 4px; padding: 2px 6px; white-space: nowrap; }
+.chip.example { color: var(--accent); border-color: var(--accent); }
+.frontbody { flex: 1; min-height: 0; overflow: auto; padding: 18px 22px 22px; display: flex; flex-direction: column; justify-content: center; gap: 18px; text-align: center; }
+.word { font-family: var(--f-display); font-weight: 600; font-size: clamp(34px, 9vw, 52px); line-height: 1.05; letter-spacing: -.015em; text-wrap: balance; overflow-wrap: anywhere; }
+.ex { font-family: var(--f-display); font-style: italic; font-size: 19px; line-height: 1.45; color: var(--muted); max-width: 30em; margin: 0 auto; text-wrap: pretty; }
+.ex mark { background: none; color: var(--ink); font-weight: 600; font-style: italic; }
+.hint { font-size: 12.5px; color: var(--muted); opacity: .8; }
+.backbody { flex: 1; min-height: 0; overflow: auto; padding: 14px 22px 20px; }
+.deflabel { font-family: var(--f-mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); line-height: 18px; }
+.def { font-family: var(--f-display); font-size: 21px; line-height: 34px; margin: 0; background-image: repeating-linear-gradient(to bottom, transparent 0 33px, var(--line) 33px 34px); text-wrap: pretty; }
+.backex { margin-top: 18px; font-family: var(--f-display); font-style: italic; font-size: 16.5px; color: var(--muted); line-height: 1.5; }
+.backex mark { background: none; color: var(--ink); font-weight: 600; }
+
+.actions { display: grid; gap: 10px; }
+.btn { border: 1px solid var(--edge); background: var(--paper); border-radius: 10px; padding: 13px 16px; font-weight: 600; font-size: 15.5px; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn:disabled { opacity: .55; cursor: default; }
+.btn.small { padding: 8px 12px; font-size: 14px; border-radius: 8px; }
+.grade { grid-template-columns: repeat(3, 1fr); }
+.gbtn { border: 1px solid var(--edge); background: var(--paper); border-radius: 10px; padding: 11px 6px 10px; display: flex; flex-direction: column; align-items: center; gap: 2px; font-weight: 600; font-size: 15px; }
+.gbtn small { font-family: var(--f-mono); font-size: 11px; font-weight: 400; color: var(--muted); }
+.gbtn.again { color: var(--bad); background: var(--bad-bg); border-color: transparent; }
+.gbtn.hard { color: var(--warn); background: var(--warn-bg); border-color: transparent; }
+.gbtn.good { color: var(--good); background: var(--good-bg); border-color: transparent; }
+.gbtn kbd { display: none; }
+@media (hover: hover) and (min-width: 700px) {
+  .gbtn kbd, .kbdhint { display: inline; }
+}
+.kbdhint { display: none; text-align: center; font-size: 12px; color: var(--muted); }
+kbd { font-family: var(--f-mono); font-size: 10.5px; border: 1px solid var(--edge); border-radius: 3px; padding: 0 4px; color: var(--muted); font-weight: 400; }
+
+.panel { background: var(--paper); border: 1px solid var(--edge); border-radius: 10px; padding: 22px 20px; display: flex; flex-direction: column; gap: 12px; }
+.panel h2 { font-family: var(--f-display); font-weight: 600; font-size: 24px; line-height: 1.2; margin: 0; text-wrap: balance; }
+.panel p { margin: 0; color: var(--muted); }
+.row { display: flex; flex-wrap: wrap; gap: 10px; }
+
+/* Add form */
+.form { display: flex; flex-direction: column; gap: 16px; }
+.field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.field label { font-size: 13px; font-weight: 600; color: var(--muted); display: flex; justify-content: space-between; gap: 8px; }
+.field label span { font-weight: 400; }
+.inp { width: 100%; background: var(--paper); border: 1px solid var(--edge); border-radius: 8px; padding: 11px 12px; font-size: 16px; }
+.inp:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: transparent; }
+textarea.inp { resize: vertical; min-height: 84px; line-height: 1.45; }
+.inp.wordinp { font-family: var(--f-display); font-size: 22px; font-weight: 600; padding: 8px 12px; }
+.wordrow { display: flex; gap: 8px; align-items: stretch; }
+.wordrow .inp { flex: 1; min-width: 0; }
+.fill { border: 1px solid var(--accent); color: var(--accent); background: transparent; border-radius: 8px; padding: 0 14px; font-weight: 600; font-size: 14px; white-space: nowrap; }
+.fill:disabled { opacity: .6; cursor: default; }
+.two { display: grid; grid-template-columns: 1fr 2fr; gap: 12px; }
+.two .inp { font-family: var(--f-mono); font-size: 15px; }
+.note { font-size: 13px; color: var(--muted); }
+.note.err { color: var(--bad); }
+.dupwarn { border: 1px solid var(--warn); border-left-width: 4px; border-radius: 8px; padding: 10px 12px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; font-size: 14.5px; }
+.dupwarn strong { color: var(--warn); }
+.dupwarn .dw-text { min-width: 0; flex: 1 1 220px; }
+.dupwarn .dw-def { display: block; color: var(--muted); font-size: 13.5px; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.inp.wordinp.isdup { border-color: var(--warn); }
+.note button { border: 0; background: none; color: var(--accent); font-weight: 600; padding: 0; text-decoration: underline; }
+.formhead { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.formhead h2 { font-family: var(--f-display); font-weight: 600; font-size: 24px; margin: 0; }
+.formactions { display: flex; gap: 10px; flex-wrap: wrap; }
+.formactions .primary { flex: 1; min-width: 140px; }
+.btn.danger { color: var(--bad); }
+.btn.danger.armed { background: var(--bad); border-color: var(--bad); color: #fff; }
+
+/* Words list */
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--edge); border-radius: 10px; background: var(--paper); }
+.stat { padding: 12px 14px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.stat + .stat { border-left: 1px solid var(--edge); }
+.stat b { font-family: var(--f-display); font-size: 28px; font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums; }
+.stat span { font-size: 12.5px; color: var(--muted); }
+.list { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--edge); }
+.item { border-bottom: 1px solid var(--edge); }
+.item button { width: 100%; text-align: left; background: none; border: 0; padding: 14px 4px; display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: baseline; }
+.item .w { font-family: var(--f-display); font-weight: 600; font-size: 20px; min-width: 0; overflow-wrap: anywhere; }
+.item .w small { font-family: var(--f-mono); font-size: 11.5px; font-weight: 400; color: var(--rule); margin-left: 6px; }
+.item .d { grid-column: 1 / -1; color: var(--muted); font-size: 14.5px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.lvl { display: inline-flex; gap: 3px; align-items: center; }
+.lvl i { width: 6px; height: 6px; border-radius: 50%; background: var(--soft); border: 1px solid var(--edge); }
+.lvl i.on { background: var(--accent); border-color: var(--accent); }
+.empty { text-align: center; color: var(--muted); padding: 30px 10px; }
+
+.toast { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%) translateY(20px); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 8px; font-size: 14.5px; font-weight: 500; opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; max-width: calc(100% - 32px); z-index: 20; }
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+@media (max-width: 420px) {
+  .two { grid-template-columns: 1fr; }
+  .stat b { font-size: 24px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .card, .bar > i, .toast { transition: none; }
+}
+
+/* Decks */
+.tabs { grid-template-columns: repeat(4, 1fr); }
+select.inp { appearance: none; -webkit-appearance: none; padding-right: 34px; background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%); background-position: calc(100% - 18px) 52%, calc(100% - 13px) 52%; background-size: 5px 5px; background-repeat: no-repeat; font-weight: 600; }
+.chips { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding: 2px; margin: -2px; }
+.chips::-webkit-scrollbar { display: none; }
+.dchip { flex: none; border: 1px solid var(--edge); background: var(--paper); border-radius: 999px; padding: 7px 13px 7px 11px; font-size: 14px; font-weight: 600; color: var(--ink); display: inline-flex; gap: 7px; align-items: center; white-space: nowrap; max-width: 70vw; }
+.dchip .dot { flex: none; width: 9px; height: 9px; border-radius: 50%; background: var(--dc, var(--accent)); }
+.dchip .nm { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.dchip .n { font-family: var(--f-mono); font-size: 12px; font-weight: 400; color: var(--muted); font-variant-numeric: tabular-nums; }
+.dchip .due { flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--rule); }
+.dchip[aria-pressed="true"] { background: var(--dc, var(--accent)); border-color: var(--dc, var(--accent)); color: #fff; }
+.dchip[aria-pressed="true"] .dot { background: #fff; }
+.dchip[aria-pressed="true"] .n { color: rgba(255,255,255,.85); }
+.dchip[aria-pressed="true"] .due { background: #fff; }
+.decklist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.deck { background: var(--paper); border: 1px solid var(--edge); border-left: 6px solid var(--dc, var(--accent)); border-radius: 10px; padding: 14px 16px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 14px; }
+.deckmain { min-width: 0; flex: 1 1 220px; display: flex; flex-direction: column; gap: 4px; }
+.dname { font-family: var(--f-display); font-size: 22px; font-weight: 600; line-height: 1.2; overflow-wrap: anywhere; }
+.dname small { font-family: var(--f-mono); font-size: 10.5px; font-weight: 400; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); border: 1px solid var(--edge); border-radius: 4px; padding: 1px 5px; vertical-align: middle; }
+.dmeta { font-size: 13.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.dactions { display: flex; gap: 6px; flex-wrap: wrap; }
+.dconfirm { flex-basis: 100%; border-top: 1px dashed var(--edge); padding-top: 12px; display: flex; flex-direction: column; gap: 10px; }
+.dconfirm p { margin: 0; font-size: 14.5px; }
+.dconfirm .row .btn { white-space: normal; text-align: left; }
+.filters { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr); gap: 10px; }
+/* Choosing words to move */
+.listtools { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.list.selecting .item button { grid-template-columns: auto 1fr auto; }
+.list.selecting .item .d { grid-column: 2 / -1; }
+.item .ck { width: 22px; height: 22px; border: 2px solid var(--edge); border-radius: 6px; display: inline-grid; place-items: center; align-self: center; grid-row: span 2; color: transparent; font-size: 14px; font-weight: 700; }
+.item.selected button { background: var(--soft); border-radius: 8px; }
+.item.selected .ck { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.movebar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 15; background: var(--paper); border-top: 1px solid var(--edge); box-shadow: 0 -10px 26px -14px rgba(0,0,0,.3); padding-top: 12px; padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px)); padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.mb { max-width: 620px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.mbcount { font-weight: 600; flex: 1 1 auto; }
+.mbmove { display: flex; gap: 8px; align-items: center; flex: 1 1 100%; }
+.mbmove label { font-size: 13px; font-weight: 600; color: var(--muted); white-space: nowrap; }
+.mbmove select { flex: 1; min-width: 0; padding-block: 8px; font-size: 15px; }
+body.has-bar { padding-bottom: 150px; }
+body.has-bar .toast { bottom: calc(130px + env(safe-area-inset-bottom, 0px)); }
+.item .dk { font-family: var(--f-mono); font-size: 11px; color: var(--dc, var(--accent)); margin-right: 8px; text-transform: uppercase; letter-spacing: .05em; }
+@media (max-width: 440px) {
+  .tab { font-size: 13.5px; padding: 9px 2px; gap: 4px; }
+  .badge { padding: 1px 5px; }
+  .filters { grid-template-columns: 1fr; }
+}
+.brandrow { align-items: center; }
+.topright { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.themebtn { flex: none; width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--edge); background: var(--paper); color: var(--ink); display: inline-grid; place-items: center; padding: 0; }
+.themebtn svg { display: block; }
+.themebtn .i-sun { display: none; }
+:root[data-mode="dark"] .themebtn .i-sun { display: block; }
+:root[data-mode="dark"] .themebtn .i-moon { display: none; }
+.taggroup { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.exrow { display: flex; align-items: flex-start; justify-content: center; gap: 8px; }
+.exrow .ex { margin: 0; }
+/* Add: one or many */
+.seg { display: grid; grid-template-columns: 1fr 1fr; background: var(--soft); border-radius: 10px; padding: 3px; gap: 3px; }
+.seg button { border: 0; background: transparent; padding: 8px; border-radius: 8px; font-weight: 600; font-size: 14.5px; color: var(--muted); }
+.seg button[aria-pressed="true"] { background: var(--paper); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+.plist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.prow { display: flex; flex-direction: column; gap: 8px; }
+.prow.ready { background: var(--paper); border: 1px solid var(--edge); border-radius: 10px; padding: 10px 12px 12px; }
+.prow.off { opacity: .55; }
+.ptop { display: flex; gap: 8px; align-items: center; }
+.ptop .inp { flex: 1; min-width: 0; font-family: var(--f-display); font-size: 19px; font-weight: 600; padding: 8px 12px; }
+.prow.ready .ptop .inp { border-color: transparent; padding-left: 4px; background: transparent; }
+.ptop input[type="checkbox"] { width: 20px; height: 20px; accent-color: var(--accent); flex: none; margin: 0; }
+.px { flex: none; width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--edge); background: var(--paper); color: var(--muted); font-size: 18px; line-height: 1; padding: 0; }
+.pstat { font-size: 12.5px; font-weight: 600; color: var(--muted); }
+.pstat.warn { color: var(--warn); }
+.pstat.ok { color: var(--good); }
+.pstat.info { color: var(--accent); }
+.dupinfo { border: 1px solid var(--accent); border-left-width: 4px; border-radius: 8px; padding: 9px 12px; font-size: 14px; color: var(--ink); }
+.pdetail { display: flex; flex-direction: column; gap: 6px; }
+.pdetail .bpos { font-family: var(--f-display); font-style: italic; color: var(--rule); }
+.pdetail textarea.inp { min-height: 48px; font-size: 15px; padding: 8px 10px; }
+.blbl { font-size: 12px; color: var(--muted); font-weight: 600; }
+/* Stats */
+.statspanel { gap: 14px; }
+.streakrow { display: flex; flex-wrap: wrap; gap: 14px 24px; align-items: center; }
+.streak { display: flex; align-items: baseline; gap: 8px; }
+.streak b { font-family: var(--f-display); font-size: 46px; font-weight: 600; line-height: 1; color: var(--rule); font-variant-numeric: tabular-nums; }
+.streak span { font-size: 14px; color: var(--muted); font-weight: 600; }
+.ministats { display: flex; gap: 20px; flex-wrap: wrap; }
+.ministats div { display: flex; flex-direction: column; }
+.ministats b { font-family: var(--f-display); font-size: 23px; font-weight: 600; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.ministats span { font-size: 12px; color: var(--muted); }
+.heatwrap { overflow-x: auto; }
+.heat { display: grid; grid-template-rows: repeat(7, 12px); grid-auto-flow: column; grid-auto-columns: 12px; gap: 3px; width: max-content; }
+.heat i, .heatlegend i { width: 12px; height: 12px; border-radius: 3px; background: var(--heat0); display: block; }
+.heat i.h1, .heatlegend i.h1 { background: var(--heat1); }
+.heat i.h2, .heatlegend i.h2 { background: var(--heat2); }
+.heat i.h3, .heatlegend i.h3 { background: var(--heat3); }
+.heat i.h4, .heatlegend i.h4 { background: var(--heat4); }
+.heat i.future { background: transparent; }
+.heatlegend { display: flex; align-items: center; gap: 4px; font-size: 11.5px; color: var(--muted); }
+#restoreLbl { cursor: pointer; display: inline-flex; align-items: center; }
+#backupPanel h2, #apiPanel h2 { font-size: 21px; }
+.opt { font-family: var(--f-mono); font-size: 11px; font-weight: 400; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); border: 1px solid var(--edge); border-radius: 4px; padding: 1px 6px; vertical-align: middle; }
+.manual { background: var(--paper); border: 1px solid var(--accent); border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+.manual h3 { margin: 0; font-family: var(--f-display); font-size: 20px; font-weight: 600; }
+.steps { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 12px; }
+.steps li { padding-left: 4px; }
+.steps textarea { margin-top: 8px; font-size: 14px; }
+.steps a { color: var(--accent); font-weight: 600; }
+.check { display: flex; gap: 10px; align-items: flex-start; font-size: 14.5px; }
+.check input { width: 18px; height: 18px; accent-color: var(--accent); margin: 2px 0 0; flex: none; }
+.settings .inp { font-family: var(--f-body); font-size: 15px; }
+.settings h2 { font-size: 21px; }
+.stamp.hard { left: 50%; color: var(--warn); transform: translateX(-50%) rotate(-3deg); white-space: nowrap; }
+</style>
+</head>
+<body>
+<script>try { if (localStorage.getItem("lexicard.mode") === "dark") document.documentElement.setAttribute("data-mode", "dark"); } catch (e) {}</script>
+
+<div class="app">
+  <header class="top">
+    <div class="brandrow">
+      <div class="brand">Lexi<em>card</em></div>
+      <div class="topright">
+        <span class="sync" id="sync" data-s="">Loading…</span>
+        <button type="button" class="themebtn" id="themeBtn" aria-label="Switch to night theme" title="Night theme">
+          <svg class="i-moon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>
+          <svg class="i-sun" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></svg>
+        </button>
+      </div>
+    </div>
+    <nav class="tabs" role="tablist" aria-label="Sections">
+      <button class="tab" role="tab" id="tab-study" data-view="study" aria-selected="true">Study <span class="badge" id="dueBadge" title="Words to review" hidden>0</span></button>
+      <button class="tab" role="tab" id="tab-add" data-view="add" aria-selected="false">Add word</button>
+      <button class="tab" role="tab" id="tab-decks" data-view="decks" aria-selected="false">Decks</button>
+      <button class="tab" role="tab" id="tab-words" data-view="words" aria-selected="false">My words</button>
+    </nav>
+  </header>
+
+  <main>
+    <!-- STUDY -->
+    <section id="view-study" style="display:flex;flex-direction:column;gap:14px">
+      <div class="chips" id="chips" role="group" aria-label="Choose a deck to study" hidden></div>
+      <div class="meta"><span id="metaLeft">Loading your words…</span><span id="metaRight"></span></div>
+      <div class="bar" id="barWrap"><i id="bar"></i></div>
+
+      <div class="stage" id="stage">
+       <div class="swiper" id="swiper">
+        <div class="stamp good" id="stampGood" aria-hidden="true">Knew it</div>
+        <div class="stamp again" id="stampAgain" aria-hidden="true">Didn't know</div>
+        <div class="stamp hard" id="stampHard" aria-hidden="true">Review again</div>
+        <div class="card" id="card" role="button" tabindex="0" aria-label="Flip card">
+          <div class="face front">
+            <div class="cardhead"><span class="taggroup"><span class="tag" id="cFrontTag"></span></span><span class="chip" id="cChip">New</span></div>
+            <div class="frontbody">
+              <div class="whead"><div class="word" id="cWord">meticulous</div><div class="wpos" id="cPos"></div></div>
+              <div class="exrow" id="cExRow"><div class="ex" id="cEx"></div></div>
+              <div class="hint" id="cHint">Tap to see the meaning · swipe right: knew it · left: didn't know · up: review again</div>
+            </div>
+          </div>
+          <div class="face back">
+            <div class="cardhead"><span class="taggroup"><span class="tag" id="cBackTag"></span></span><span class="chip" id="cChip2">Meaning</span></div>
+            <div class="backbody">
+              <div class="deflabel">Definition</div>
+              <p class="def" id="cDef"></p>
+              <div class="backex" id="cBackEx"></div>
+            </div>
+          </div>
+        </div>
+       </div>
+      </div>
+
+      <div class="actions" id="flipActions"><button class="btn primary" id="flipBtn">Show meaning</button></div>
+      <div class="actions grade" id="gradeActions" hidden>
+        <button class="gbtn again" data-g="again">Didn't know <small id="iAgain">in a few cards</small> <kbd>←</kbd></button>
+        <button class="gbtn hard" data-g="hard">Review again <small id="iHard">later today</small> <kbd>↑</kbd></button>
+        <button class="gbtn good" data-g="good">Knew it <small id="iGood">1 day</small> <kbd>→</kbd></button>
+      </div>
+      <div class="kbdhint" id="kbdHint"><kbd>Space</kbd> flip · <kbd>←</kbd> didn't know · <kbd>↑</kbd> review again · <kbd>→</kbd> knew it</div>
+
+      <div class="panel" id="emptyPanel" hidden>
+        <h2 id="emptyTitle">You have no words yet</h2>
+        <p id="emptyText">The card above is an example. Add your first word and it will show up here, on your phone and on your computer.</p>
+        <div class="row"><button class="btn primary" data-go="add">Add a word</button></div>
+      </div>
+      <div class="panel" id="donePanel" hidden>
+        <h2 id="doneTitle">Done for today</h2>
+        <p id="doneText"></p>
+        <div class="row">
+          <button class="btn primary" id="studyDueBtn" hidden>Study due words</button>
+          <button class="btn" id="practiceBtn">Practice all words</button>
+          <button class="btn" data-go="add">Add a word</button>
+        </div>
+      </div>
+      <div class="panel" id="offPanel" hidden>
+        <h2>Open this page in Claude to use your words</h2>
+        <p>Your words are saved to your Claude account. Sign in to claude.ai and open this page from the same link, on your phone or on your computer.</p>
+      </div>
+    </section>
+
+    <!-- ADD / EDIT -->
+    <section id="view-add" hidden>
+      <div class="form">
+        <div class="formhead"><h2 id="formTitle">New word</h2><span class="note" id="formMode"></span></div>
+        <div class="seg" id="addModes" role="group" aria-label="How many words to add">
+          <button type="button" id="modeMany" aria-pressed="true">Word list</button>
+          <button type="button" id="modeOne" aria-pressed="false">Single word</button>
+        </div>
+        <div class="field">
+          <label for="fDeck">Deck</label>
+          <select class="inp" id="fDeck"></select>
+          <input class="inp" id="fNewDeck" autocomplete="off" placeholder="Name of the new deck, e.g. Phrasal verbs" hidden>
+        </div>
+        <form class="form" id="form" novalidate hidden>
+        <div class="field">
+          <label for="fWord">Word or phrase</label>
+          <div class="wordrow">
+            <input class="inp wordinp" id="fWord" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="e.g. reluctant">
+            <button type="button" class="fill" id="fillBtn" hidden>Fill with Claude</button>
+          </div>
+          <div class="dupinfo" id="dupInfo" role="status" hidden></div>
+          <div class="dupwarn" id="dupWarn" role="alert" hidden>
+            <div class="dw-text"><strong id="dupTitle">This word is already saved.</strong><span class="dw-def" id="dupDef"></span></div>
+            <button type="button" class="btn small" id="dupOpen">Open existing card</button>
+          </div>
+        </div>
+        <div class="field">
+          <label for="fEx">Example sentence <span>shown on the front</span></label>
+          <textarea class="inp" id="fEx" rows="2" placeholder="She was reluctant to admit she was wrong."></textarea>
+          <div class="note" id="exCount"></div>
+        </div>
+        <div class="field">
+          <label for="fDef">English definition <span>shown on the back</span></label>
+          <textarea class="inp" id="fDef" rows="3" placeholder="not wanting to do something and therefore slow to do it"></textarea>
+        </div>
+        <div class="two">
+          <div class="field"><label for="fPos">Word type</label><input class="inp" id="fPos" autocomplete="off" placeholder="adjective"></div>
+          <div class="field"><label for="fIpa">Pronunciation</label><input class="inp" id="fIpa" autocomplete="off" placeholder="/rɪˈlʌktənt/"></div>
+        </div>
+        <div class="note" id="formNote"></div>
+        <div class="formactions">
+          <button type="submit" class="btn primary" id="saveBtn">Save card</button>
+          <button type="button" class="btn" id="cancelBtn" hidden>Cancel</button>
+          <button type="button" class="btn danger" id="delBtn" hidden>Delete</button>
+        </div>
+        </form>
+        <div class="form" id="bulk">
+          <p class="note">Write one word or phrase per box. A new box opens as you type, and your list is kept on this device until you get the definitions, even if you close the page.</p>
+          <ul class="plist" id="pList"></ul>
+          <div class="manual" id="manual" hidden>
+            <h3>Get the definitions from Claude chat</h3>
+            <p class="note" id="mIntro"></p>
+            <ol class="steps">
+              <li><div class="row"><button type="button" class="btn small primary" id="mCopy">Copy request</button><span class="note" id="mCopyNote"></span></div>
+                <textarea class="inp" id="mPrompt" rows="4" readonly hidden aria-label="Request to copy"></textarea></li>
+              <li>Open <a href="https://claude.ai/new" target="_blank" rel="noopener">claude.ai</a> or the Claude app, paste it into a new chat and send it.</li>
+              <li>Copy Claude's whole answer and paste it here:
+                <textarea class="inp" id="mPaste" rows="5" placeholder="Paste Claude's answer here" aria-label="Claude's answer"></textarea></li>
+            </ol>
+            <div class="row"><button type="button" class="btn primary" id="mFill">Fill in the words</button><button type="button" class="btn" id="mClose">Close</button></div>
+            <p class="note" id="mNote"></p>
+          </div>
+          <div class="note" id="bNote"></div>
+          <div class="formactions">
+            <button type="button" class="btn primary" id="bLookup" disabled>Look up with Claude</button>
+            <button type="button" class="btn primary" id="bSave" hidden>Save</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- DECKS -->
+    <section id="view-decks" hidden style="flex-direction:column;gap:16px">
+      <form class="field" id="newDeckForm" novalidate>
+        <label for="newDeckName">Create a new deck</label>
+        <div class="wordrow">
+          <input class="inp" id="newDeckName" autocomplete="off" placeholder="e.g. Phrasal verbs, Work words">
+          <button class="btn primary small" type="submit" id="newDeckBtn">Create</button>
+        </div>
+        <div class="note" id="deckNote"></div>
+      </form>
+      <ul class="decklist" id="deckList"></ul>
+      <div class="panel settings" id="settingsPanel">
+        <h2>Study settings</h2>
+        <div class="two">
+          <div class="field"><label for="setNew">New words per day</label>
+            <select class="inp" id="setNew"><option value="5">5</option><option value="10">10</option><option value="15">15</option><option value="20">20</option><option value="30">30</option><option value="50">50</option><option value="0">No limit</option></select></div>
+          <div class="field"><label for="setRet">Target memory</label>
+            <select class="inp" id="setRet"><option value="0.85">85% · fewer reviews</option><option value="0.9">90% · recommended</option><option value="0.95">95% · more reviews</option></select></div>
+        </div>
+        <label class="check" for="setVary"><input type="checkbox" id="setVary" checked> Rotate between 3 example sentences each time a word comes back</label>
+        <p class="note">Words are scheduled with FSRS, the algorithm Anki uses. Each word comes back when your chance of remembering it drops to the target above, so easy words come back rarely and hard words often.</p>
+        <p class="note" id="setNote"></p>
+      </div>
+      <div class="panel" id="apiPanel">
+        <h2>Claude API key <span class="opt">optional</span></h2>
+        <p>Without a key, you get definitions by copying a request into the free Claude chat. With your own key from the Claude Console, words are filled in with one tap and older words get their extra example sentences automatically. Anthropic charges your Console account per use. The key is kept only on this device.</p>
+        <div class="wordrow"><input class="inp" id="apiKey" type="password" autocomplete="off" spellcheck="false" placeholder="sk-ant-…" aria-label="Claude API key"><button type="button" class="btn small primary" id="apiSave">Save key</button></div>
+        <div class="row"><button type="button" class="btn small" id="apiTest">Test key</button><button type="button" class="btn small danger" id="apiRemove">Remove key</button></div>
+        <p class="note" id="apiNote"></p>
+      </div>
+      <div class="panel" id="backupPanel">
+        <h2>Backup</h2>
+        <p>Download all your words, example sentences, decks, learning progress and settings as one file. Your words live only on this device, so a backup is also how you move them to your phone or computer: download it here, then restore it there. Keep a copy somewhere safe, like Google Drive.</p>
+        <p class="note" id="lastBackup"></p>
+        <div class="row">
+          <button type="button" class="btn primary" id="backupBtn">Download backup</button>
+          <label class="btn" for="restoreFile" id="restoreLbl" tabindex="0">Restore from backup</label>
+          <input type="file" id="restoreFile" hidden>
+        </div>
+        <div class="dconfirm" id="restoreBox" hidden>
+          <p id="restoreText"></p>
+          <div class="row"><button type="button" class="btn primary" id="restoreGo">Restore</button><button type="button" class="btn" id="restoreCancel">Cancel</button></div>
+        </div>
+        <p class="note" id="backupNote"></p>
+      </div>
+    </section>
+
+    <!-- WORDS -->
+    <section id="view-words" hidden style="flex-direction:column;gap:14px">
+      <div class="panel statspanel" id="statsPanel">
+        <div class="streakrow">
+          <div class="streak"><b id="stStreak">0</b><span id="stStreakLbl">days in a row</span></div>
+          <div class="ministats">
+            <div><b id="stToday">0</b><span>reviews today</span></div>
+            <div><b id="stRate">–</b><span>“Knew it”, last 30 days</span></div>
+            <div><b id="stKnown">0</b><span>well known</span></div>
+          </div>
+        </div>
+        <div class="heatwrap" id="heatWrap"><div class="heat" id="heat" role="img" aria-label="Reviews per day over the last 18 weeks"></div></div>
+        <div class="heatlegend"><span>Less</span><i></i><i class="h1"></i><i class="h2"></i><i class="h3"></i><i class="h4"></i><span>More</span></div>
+      </div>
+      <div class="stats">
+        <div class="stat"><b id="sTotal">0</b><span>words</span></div>
+        <div class="stat"><b id="sDue">0</b><span>to review</span></div>
+        <div class="stat"><b id="sKnown">0</b><span>well known</span></div>
+      </div>
+      <div class="filters">
+        <select class="inp" id="wDeck" aria-label="Deck"></select>
+        <input class="inp" id="search" type="search" placeholder="Search words or definitions" autocomplete="off">
+      </div>
+      <div class="listtools"><span class="note" id="listCount"></span><button type="button" class="btn small" id="selectBtn">Select words</button></div>
+      <ul class="list" id="list"></ul>
+    </section>
+  </main>
+</div>
+<div class="movebar" id="moveBar" hidden>
+  <div class="mb">
+    <span class="mbcount" id="mbCount">Tap words to choose them</span>
+    <button type="button" class="btn small" id="mbAll">Select all</button>
+    <button type="button" class="btn small danger" id="mbDel" disabled>Delete</button>
+    <div class="mbmove" id="mbMoveRow">
+      <label for="moveTo">Move to</label>
+      <select class="inp" id="moveTo"></select>
+      <button type="button" class="btn small primary" id="mbMove" disabled>Move</button>
+      <button type="button" class="btn small" id="mbCancel">Cancel</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+/* Lexicard on its own: stands in for the features the Claude version got from Claude.
+   - Your words are kept on this device (IndexedDB). They are never sent anywhere.
+   - Claude is used only if you add your own API key (Decks → Claude API key).
+     Without a key you copy a request into the free Claude chat and paste the answer back.
+   - Backups are saved with the browser's normal download. */
+(function () {
+  const IDB_NAME = "lexicard", STORE = "docs";
+  const mem = new Map(), subs = new Set();
+  let idb = null;
+  function openIdb() {
+    return new Promise((res) => {
+      try {
+        const r = indexedDB.open(IDB_NAME, 1);
+        r.onupgradeneeded = () => r.result.createObjectStore(STORE);
+        r.onsuccess = () => res(r.result);
+        r.onerror = () => res(null);
+      } catch (e) { res(null); }
+    });
+  }
+  async function loadAll() {
+    idb = typeof indexedDB !== "undefined" ? await openIdb() : null;
+    if (idb) {
+      await new Promise((res) => {
+        const rq = idb.transaction(STORE, "readonly").objectStore(STORE).openCursor();
+        rq.onsuccess = () => { const c = rq.result; if (c) { mem.set(c.key, c.value); c.continue(); } else res(); };
+        rq.onerror = () => res();
+      });
+    } else {
+      try { const raw = JSON.parse(localStorage.getItem("lexicard.db") || "{}"); for (const k in raw) mem.set(k, raw[k]); } catch (e) {}
+    }
+    // Ask the browser not to clear this site's storage when space runs low
+    try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
+  }
+  function persist(path, value) {
+    if (idb) {
+      return new Promise((res, rej) => {
+        const tx = idb.transaction(STORE, "readwrite"), st = tx.objectStore(STORE);
+        if (value === undefined) st.delete(path); else st.put(value, path);
+        tx.oncomplete = () => res();
+        tx.onerror = () => rej({ code: "unavailable", message: String(tx.error) });
+      });
+    }
+    try { const o = {}; mem.forEach((v, k) => { o[k] = v; }); localStorage.setItem("lexicard.db", JSON.stringify(o)); return Promise.resolve(); }
+    catch (e) { return Promise.reject({ code: "quota_exceeded", message: "Storage is full" }); }
+  }
+  const clone = (v) => JSON.parse(JSON.stringify(v));
+  const META = { hasPendingWrites: false, fromCache: false };
+  function snapDoc(path) {
+    const v = mem.get(path);
+    return { id: path.split("/").pop(), exists: v !== undefined, data: () => (v === undefined ? undefined : clone(v)), metadata: META };
+  }
+  function snapCol(path) {
+    const pre = path + "/", docs = [];
+    mem.forEach((v, k) => { if (k.startsWith(pre) && k.indexOf("/", pre.length) < 0) docs.push(snapDoc(k)); });
+    docs.sort((a, b) => (a.id < b.id ? -1 : 1));
+    return { docs, size: docs.length, empty: !docs.length, metadata: META, docChanges: () => [] };
+  }
+  let notifyT = null;
+  function notify() { clearTimeout(notifyT); notifyT = setTimeout(() => subs.forEach((f) => { try { f(); } catch (e) { console.error(e); } }), 0); }
+  let auto = 0;
+  const newKey = () => "a" + Date.now().toString(36) + (auto++).toString(36) + Math.random().toString(36).slice(2, 8);
+  function docRef(path) {
+    return {
+      path, id: path.split("/").pop(),
+      get: async () => snapDoc(path),
+      set: async (d) => { const v = clone(d); mem.set(path, v); notify(); await persist(path, v); },
+      update: async (d) => {
+        if (!mem.has(path)) throw { code: "invalid_argument", message: "Document does not exist" };
+        const v = { ...mem.get(path), ...clone(d) }; mem.set(path, v); notify(); await persist(path, v);
+      },
+      delete: async () => { mem.delete(path); notify(); await persist(path, undefined); },
+      onSnapshot: (next) => { const f = () => next(snapDoc(path)); subs.add(f); setTimeout(f, 0); return () => subs.delete(f); },
+      collection: (c) => colRef(path + "/" + c)
+    };
+  }
+  function colRef(path) {
+    const q = {
+      path,
+      doc: (id) => docRef(path + "/" + (id || newKey())),
+      limit: () => q,
+      add: async (d) => { const r = q.doc(); await r.set(d); return r; },
+      get: async () => snapCol(path),
+      onSnapshot: (next) => { const f = () => next(snapCol(path)); subs.add(f); setTimeout(f, 0); return () => subs.delete(f); }
+    };
+    return q;
+  }
+  const db = { doc: docRef, collection: colRef };
+  const user = { id: async () => "me", me: async () => ({ id: "me", name: "" }), isOwner: async () => true, canEdit: async () => true, can: async () => true };
+  const downloads = {
+    save: async ({ filename, data }) => {
+      const blob = data instanceof Blob ? data : new Blob([data], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+      return { status: "saved" };
+    }
+  };
+
+  // ----- Claude through your own API key (optional) -----
+  const KEY = "lexicard.apiKey", MODEL = "claude-haiku-5-5";
+  function apiKey() { try { return localStorage.getItem(KEY) || ""; } catch (e) { return ""; } }
+  function parseJSONLoose(text) {
+    text = String(text || "").trim();
+    try { return JSON.parse(text); } catch (e) {}
+    const fence = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+    if (fence) { try { return JSON.parse(fence[1]); } catch (e) {} }
+    const i = text.search(/[\[{]/), j = Math.max(text.lastIndexOf("]"), text.lastIndexOf("}"));
+    if (i >= 0 && j > i) { try { return JSON.parse(text.slice(i, j + 1)); } catch (e) {} }
+    throw { code: "invalid_json", message: "The answer couldn't be read", text };
+  }
+  async function callClaude(prompt, maxTokens) {
+    const key = apiKey();
+    if (!key) throw { code: "not_granted", message: "No API key" };
+    let r;
+    try {
+      r = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-api-key": key, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
+        body: JSON.stringify({ model: MODEL, max_tokens: maxTokens || 8000, messages: [{ role: "user", content: prompt }] })
+      });
+    } catch (e) { throw { code: "unavailable", message: "Network error" }; }
+    if (r.status === 401 || r.status === 403) throw { code: "bad_key", message: "API key rejected" };
+    if (r.status === 429 || r.status === 529) throw { code: "rate_limited", message: "Busy" };
+    if (r.status === 400) { let m = ""; try { m = (await r.json()).error.message; } catch (e) {} throw { code: /credit|balance|billing/i.test(m) ? "no_credit" : "unavailable", message: m || "Bad request" }; }
+    if (!r.ok) throw { code: "unavailable", message: "HTTP " + r.status };
+    const j = await r.json();
+    const text = (j.content || []).filter((c) => c.type === "text").map((c) => c.text).join("");
+    if (j.stop_reason === "max_tokens") throw { code: "invalid_json", message: "The answer was cut short", text };
+    return text;
+  }
+  function makeSample() {
+    const asText = (input) => (typeof input === "string" ? input : (input || []).map((m) => m.content).join("\n\n"));
+    const s = async (input) => ({ text: await callClaude(asText(input)), truncated: false });
+    s.json = async (input) => parseJSONLoose(await callClaude(asText(input)));
+    return s;
+  }
+  window.LexicardLocal = { parseJSONLoose, apiKey, callClaude, MODEL, KEY };
+  const ready = loadAll();
+  window.claude = {
+    use: async (name) => {
+      await ready;
+      if (name === "db") return db;
+      if (name === "user") return user;
+      if (name === "downloads") return downloads;
+      if (name === "sample") return apiKey() ? makeSample() : null;
+      return null;
+    }
+  };
+})();
+</script>
+<script>
+(function () {
+  const $ = (s) => document.querySelector(s);
+  const DAY = 864e5;
+  const HOUR = 36e5, MIN = 6e4;
+  let settings = { newPerDay: 20, retention: 0.9, varyExamples: true };
+
+  // ---------- FSRS-6 (Free Spaced Repetition Scheduler) with its published default parameters ----------
+  // Ratings: 1 = Didn't know (Again), 2 = Review again (Hard), 3 = Knew it (Good)
+  const W = [0.212, 1.2931, 2.3065, 8.2956, 6.4133, 0.8334, 3.0194, 0.001, 1.8722, 0.1666, 0.796,
+    1.4835, 0.0614, 0.2629, 1.6483, 0.6014, 1.8729, 0.5425, 0.0912, 0.0658, 0.1542];
+  const DECAY = -W[20], FACTOR = Math.pow(0.9, 1 / DECAY) - 1;
+  const S_MIN = 0.001, MAX_IVL = 36500;
+  const clampD = (d) => Math.min(10, Math.max(1, d));
+  const D0 = (g) => W[4] - Math.exp(W[5] * (g - 1)) + 1;
+  const retrievability = (t, st) => Math.pow(1 + FACTOR * Math.max(0, t) / st, DECAY);
+  function nextD(d, g) {
+    const delta = -W[6] * (g - 3);
+    return clampD(W[7] * D0(4) + (1 - W[7]) * (d + (10 - d) * delta / 9));
+  }
+  function recallS(d, st, r, g) {
+    const hard = g === 2 ? W[15] : 1, easy = g === 4 ? W[16] : 1;
+    return st * (1 + Math.exp(W[8]) * (11 - d) * Math.pow(st, -W[9]) * (Math.exp((1 - r) * W[10]) - 1) * hard * easy);
+  }
+  function forgetS(d, st, r) {
+    const longTerm = W[11] * Math.pow(d, -W[12]) * (Math.pow(st + 1, W[13]) - 1) * Math.exp((1 - r) * W[14]);
+    const shortTerm = st / Math.exp(W[17] * W[18]);
+    return Math.max(S_MIN, Math.min(longTerm, shortTerm));
+  }
+  function shortS(st, g) {
+    let inc = Math.exp(W[17] * (g - 3 + W[18])) * Math.pow(st, -W[19]);
+    if (g >= 2) inc = Math.max(inc, 1);
+    return Math.max(S_MIN, st * inc);
+  }
+  // Days until recall probability falls to the target (90% by default)
+  function intervalDays(st) {
+    const ivl = st / FACTOR * (Math.pow(settings.retention, 1 / DECAY) - 1);
+    return Math.min(MAX_IVL, Math.max(1, Math.round(ivl)));
+  }
+  // Small random spread so words added together don't all come back on the same day
+  function fuzz(ivl) {
+    if (ivl < 2.5) return ivl;
+    const delta = 1 + 0.15 * (Math.min(ivl, 7) - 2.5) + 0.1 * Math.max(0, Math.min(ivl, 20) - 7) + 0.05 * Math.max(0, ivl - 20);
+    const lo = Math.max(2, Math.round(ivl - delta)), hi = Math.min(MAX_IVL, Math.round(ivl + delta));
+    return lo + Math.floor(Math.random() * (hi - lo + 1));
+  }
+  // A study day starts at 4 am, like Anki, so a late-night session still counts as "today"
+  const dayIndex = (ms) => { const t = new Date(ms - 4 * HOUR); return Math.round(Date.UTC(t.getFullYear(), t.getMonth(), t.getDate()) / DAY); };
+  const dayStart = (ms, plusDays) => { const t = new Date(ms - 4 * HOUR); return new Date(t.getFullYear(), t.getMonth(), t.getDate() + plusDays, 4).getTime(); };
+
+  // Memory state of a word: stability (days), difficulty (1-10), last review, phase
+  function memOf(w) {
+    if (Number.isFinite(w.s) && Number.isFinite(w.d)) return { s: w.s, d: w.d, last: w.last || w.lastReviewed || null, state: w.state || "review" };
+    // Words studied with the earlier box system: start from an estimate based on their box
+    if ((w.box || 0) > 0 && w.lastReviewed) return { s: [0, 1, 2, 4, 8, 16, 32][Math.min(w.box, 6)], d: 5, last: w.lastReviewed, state: "review" };
+    if ((w.reviews || 0) > 0 && w.lastReviewed) return { s: W[0], d: clampD(D0(1)), last: w.lastReviewed, state: "learning" };
+    return null;
+  }
+  const isNewWord = (w) => !memOf(w);
+  function nextMemory(w, g, now) {
+    const m = memOf(w);
+    let st, d;
+    if (!m) { st = Math.max(S_MIN, W[g - 1]); d = clampD(D0(g)); }
+    else {
+      const t = m.last ? dayIndex(now) - dayIndex(m.last) : 0;
+      if (t < 1) st = shortS(m.s, g);
+      else { const r = retrievability(t, m.s); st = g === 1 ? forgetS(m.d, m.s, r) : recallS(m.d, m.s, r, g); }
+      d = nextD(m.d, g);
+    }
+    return { m, st, d };
+  }
+  function schedule(w, g, now) {
+    const { m, st, d } = nextMemory(w, g, now);
+    const prev = m ? m.state : "new";
+    let state, due;
+    if (g === 3) { state = "review"; due = dayStart(now, fuzz(intervalDays(st))); }
+    else {
+      state = prev === "review" ? "relearning" : prev === "new" ? "learning" : prev;
+      due = now + (g === 1 ? 1 : 10) * MIN;
+    }
+    return {
+      s: st, d, state, due, last: now, lastReviewed: now,
+      reviews: (w.reviews || 0) + 1,
+      lapses: (w.lapses || 0) + (g === 1 && prev === "review" ? 1 : 0),
+      firstReviewed: w.firstReviewed || now
+    };
+  }
+  const previewGood = (w) => intervalDays(nextMemory(w, 3, Date.now()).st);
+  function stageOf(w) {
+    const m = memOf(w);
+    if (!m) return "New";
+    if (m.state !== "review" || m.s < 7) return "Learning";
+    return m.s < 21 ? "Familiar" : m.s < 90 ? "Known" : "Mastered";
+  }
+  function levelOf(w) {
+    const m = memOf(w); if (!m) return 0;
+    const st = m.s;
+    return st < 3 ? 1 : st < 7 ? 2 : st < 21 ? 3 : st < 60 ? 4 : st < 180 ? 5 : 6;
+  }
+  const wellKnown = (w) => { const m = memOf(w); return !!m && m.state === "review" && m.s >= 21; };
+  const DEFAULT_ID = "default";
+  const DECK_COLORS = ["#23867A", "#E07A5F", "#4A7BD0", "#C98F12", "#8E68C9", "#3F9A55", "#D35C86", "#2B9BB5"];
+  const EXAMPLE = {
+    id: "__example", word: "meticulous", pos: "adj.", ipa: "/məˈtɪk.jə.ləs/",
+    example: "She keeps meticulous notes on every experiment she runs.",
+    definition: "very careful about small details and making sure everything is done correctly"
+  };
+
+  let db = null, col = null, decksCol = null, sampler = null;
+  const words = new Map();
+  const deckDocs = new Map();
+  let loaded = false, decksLoaded = false, offline = false;
+  let queue = [], practice = false, current = null, flipped = false;
+  let doneCount = 0, sessionTotal = 0, sessionActive = false;
+  let editingId = null, view = "study";
+  let renamingId = null, deletingId = null, deckBusy = false;
+  const writeChain = new Map();
+
+  const lsGet = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+  const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
+  let studyDeck = lsGet("lexicard.studyDeck") || "all";
+  let addDeck = lsGet("lexicard.addDeck") || DEFAULT_ID;
+  let listDeck = "all";
+  let pendingDeck = null;
+
+  // ---------- helpers ----------
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  function highlight(sentence, word) {
+    const safe = esc(sentence);
+    const w = String(word || "").trim();
+    if (!w) return safe;
+    const stem = w.length > 4 ? w.slice(0, w.length - (/(e|y)$/i.test(w) ? 1 : 0)) : w;
+    const pat = esc(stem).replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "\\s+");
+    try { return safe.replace(new RegExp("(\\b" + pat + "[\\w'’-]*)", "i"), "<mark>$1</mark>"); }
+    catch (e) { return safe; }
+  }
+  function fmtDays(d) {
+    if (d <= 0) return "today";
+    if (d === 1) return "1 day";
+    if (d < 30) return d + " days";
+    if (d < 365) { const mo = Math.round(d / 30); return mo + " month" + (mo > 1 ? "s" : ""); }
+    const y = Math.round(d / 36.5) / 10; return y + " year" + (y === 1 ? "" : "s");
+  }
+  function when(ms) {
+    const diff = ms - Date.now();
+    if (diff <= 0) return "now";
+    const h = Math.round(diff / 36e5);
+    if (h < 1) return "in under an hour";
+    if (h < 24) return "in " + h + " hour" + (h > 1 ? "s" : "");
+    const d = Math.round(diff / DAY);
+    return d === 1 ? "tomorrow" : "in " + d + " days";
+  }
+  const plural = (n, w) => n + " " + w + (n === 1 ? "" : "s");
+  let toastT;
+  function toast(msg) {
+    const t = $("#toast"); t.textContent = msg; t.classList.add("show");
+    clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("show"), 2800);
+  }
+  function setSync(state, text) { const s = $("#sync"); s.dataset.s = state; s.textContent = text; }
+  // Due reviews plus today's share of new words (daily new-word limit is shared by all decks)
+  function studyable(deckId) {
+    const now = Date.now(), pool = wordsIn(deckId), today = dayIndex(now);
+    const reviews = pool.filter((w) => !isNewWord(w) && (w.due || 0) <= now).sort((a, b) => (a.due || 0) - (b.due || 0));
+    const newToday = all().filter((w) => w.firstReviewed && dayIndex(w.firstReviewed) === today).length;
+    const left = settings.newPerDay > 0 ? Math.max(0, settings.newPerDay - newToday) : Infinity;
+    const fresh = pool.filter(isNewWord).sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+    const freshToday = fresh.slice(0, left);
+    return { reviews, fresh: freshToday, count: reviews.length + freshToday.length, waitingNew: fresh.length - freshToday.length };
+  }
+  const all = () => [...words.values()];
+  const norm = (s) => String(s || "").trim().toLowerCase();
+  // Word class shown under the word in full, e.g. "adj." -> "(adjective)"
+  const POS = { n: "noun", noun: "noun", v: "verb", vb: "verb", verb: "verb", adj: "adjective", adjective: "adjective", adv: "adverb", adverb: "adverb",
+    "phr v": "phrasal verb", "phrasal verb": "phrasal verb", prep: "preposition", preposition: "preposition", conj: "conjunction", conjunction: "conjunction",
+    pron: "pronoun", pronoun: "pronoun", det: "determiner", determiner: "determiner", exclam: "exclamation", interj: "interjection", idiom: "idiom", phrase: "phrase" };
+  function posFull(p) {
+    const raw = String(p || "").trim().replace(/^\(|\)$/g, "");
+    const k = raw.toLowerCase().replace(/\./g, "").replace(/\s+/g, " ").trim();
+    return POS[k] || raw;
+  }
+  // Comparison key for duplicates: ignores case, extra spaces, surrounding punctuation and a leading "to "
+  const wordKey = (s) => norm(s).replace(/[’`]/g, "'").replace(/\s+/g, " ").replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, "").replace(/^to /, "");
+  // Every record gets its own unique document id, so a new one never overwrites an old one
+  function newId(prefix) {
+    let r = "";
+    try { const a = new Uint32Array(2); crypto.getRandomValues(a); r = a[0].toString(36) + a[1].toString(36); }
+    catch (e) { r = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2); }
+    return (prefix || "w") + Date.now().toString(36) + r;
+  }
+
+  // ---------- decks ----------
+  function deckList() {
+    const def = deckDocs.get(DEFAULT_ID);
+    const out = [{ id: DEFAULT_ID, name: (def && def.name) || "General", createdAt: 0, isDefault: true, color: 0 }];
+    const rest = [...deckDocs.values()].filter((d) => d.id !== DEFAULT_ID).sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+    return out.concat(rest);
+  }
+  const deckExists = (id) => id === DEFAULT_ID || deckDocs.has(id);
+  // Words without a deck (or whose deck is gone) belong to the default deck
+  const deckIdOf = (w) => (w.deckId && (deckExists(w.deckId) || !decksLoaded)) ? w.deckId : DEFAULT_ID;
+  const deckName = (id) => id === "all" ? "All decks" : ((deckList().find((d) => d.id === id) || {}).name || "General");
+  function deckColor(id) {
+    if (id === "all") return "var(--ink)";
+    if (id === DEFAULT_ID) return DECK_COLORS[0];
+    const d = deckDocs.get(id);
+    if (d && Number.isInteger(d.color)) return DECK_COLORS[d.color % DECK_COLORS.length];
+    let h = 0; for (const c of String(id)) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+    return DECK_COLORS[1 + (h % (DECK_COLORS.length - 1))];
+  }
+  const wordsIn = (id) => all().filter((w) => id === "all" || deckIdOf(w) === id);
+
+  function renderChips() {
+    const decks = deckList();
+    const el = $("#chips");
+    el.hidden = decks.length < 2 || offline;
+    const items = [{ id: "all", name: "All decks" }].concat(decks);
+    el.innerHTML = items.map((d) => {
+      const ws = wordsIn(d.id), due = studyable(d.id).count;
+      return '<button type="button" class="dchip" style="--dc:' + deckColor(d.id) + '" data-deck="' + esc(d.id) + '" aria-pressed="' + (d.id === studyDeck) + '" title="' + plural(ws.length, "word") + (due ? ", " + due + " to review" : "") + '">' +
+        (d.id === "all" ? "" : '<i class="dot"></i>') + '<span class="nm">' + esc(d.name) + '</span><span class="n">' + ws.length + "</span>" + (due ? '<i class="due"></i>' : "") + "</button>";
+    }).join("");
+    const sel = el.querySelector('[aria-pressed="true"]');
+    if (sel && el.scrollWidth > el.clientWidth) {
+      const l = sel.offsetLeft - el.offsetLeft, r = l + sel.offsetWidth;
+      if (l < el.scrollLeft || r > el.scrollLeft + el.clientWidth) el.scrollLeft = l - 16;
+    }
+  }
+  $("#chips").addEventListener("click", (e) => { const b = e.target.closest("[data-deck]"); if (b) selectStudyDeck(b.dataset.deck); });
+  function selectStudyDeck(id) {
+    studyDeck = id; lsSet("lexicard.studyDeck", id);
+    if (id !== "all") { addDeck = id; lsSet("lexicard.addDeck", id); }
+    renderChips();
+    startSession(false);
+  }
+
+  function fillSelect(sel, items, value) {
+    sel.innerHTML = items.map((d) => '<option value="' + esc(d.id) + '">' + esc(d.name) + "</option>").join("");
+    sel.value = items.some((d) => d.id === value) ? value : items[0].id;
+  }
+  function renderDeckSelects() {
+    const decks = deckList();
+    const fd = $("#fDeck");
+    if (pendingDeck && deckExists(pendingDeck)) { fd.value = ""; addDeck = pendingDeck; pendingDeck = null; }
+    const keep = fd.value === "__new" ? "__new" : (editingId ? fd.value : (deckExists(fd.value) && fd.value) || (deckExists(addDeck) ? addDeck : DEFAULT_ID));
+    fillSelect(fd, decks.concat([{ id: "__new", name: "+ New deck…" }]), keep);
+    $("#fNewDeck").hidden = fd.value !== "__new";
+    if (listDeck !== "all" && !deckExists(listDeck)) listDeck = "all";
+    fillSelect($("#wDeck"), [{ id: "all", name: "All decks" }].concat(decks), listDeck);
+  }
+
+  function renderDecks() {
+    const ul = $("#deckList");
+    if (offline) { ul.innerHTML = '<li class="empty">Open this page in Claude while signed in to manage your decks.</li>'; return; }
+    if (!loaded || !decksLoaded) { ul.innerHTML = '<li class="empty">Loading your decks…</li>'; return; }
+    ul.innerHTML = deckList().map((d) => {
+      const ws = wordsIn(d.id), due = studyable(d.id).count, known = ws.filter(wellKnown).length;
+      const nameHtml = renamingId === d.id
+        ? '<div class="wordrow"><input class="inp" id="renameInp" value="' + esc(d.name) + '" autocomplete="off" aria-label="New name"><button class="btn small primary" data-act="rename-save">Save</button><button class="btn small" data-act="rename-cancel">Cancel</button></div>'
+        : '<div class="dname">' + esc(d.name) + (d.isDefault ? ' <small>default</small>' : "") + "</div>";
+      let confirm = "";
+      if (deletingId === d.id) {
+        confirm = '<div class="dconfirm">' + (ws.length
+          ? "<p>“" + esc(d.name) + "” has " + plural(ws.length, "word") + ". What should happen to them?</p>" +
+            '<div class="row"><button class="btn small" data-act="del-move">Move them to “' + esc(deckName(DEFAULT_ID)) + '” and delete the deck</button>' +
+            '<button class="btn small danger armed" data-act="del-all">Delete the deck and its ' + plural(ws.length, "word") + "</button>" +
+            '<button class="btn small" data-act="del-cancel">Cancel</button></div>'
+          : "<p>Delete the empty deck “" + esc(d.name) + "”?</p>" +
+            '<div class="row"><button class="btn small danger armed" data-act="del-empty">Delete deck</button><button class="btn small" data-act="del-cancel">Cancel</button></div>') +
+          "</div>";
+      }
+      return '<li class="deck" style="--dc:' + deckColor(d.id) + '" data-id="' + esc(d.id) + '"><div class="deckmain">' + nameHtml +
+        '<div class="dmeta">' + plural(ws.length, "word") + " · " + due + " to review · " + known + " well known</div></div>" +
+        (renamingId === d.id ? "" : '<div class="dactions"><button class="btn small primary" data-act="study"' + (ws.length ? "" : " disabled") + '>Study</button>' +
+          (ws.length && deckList().length > 1 ? '<button class="btn small" data-act="move">Move words</button>' : "") +
+          '<button class="btn small" data-act="rename">Rename</button>' +
+          (d.isDefault ? "" : '<button class="btn small danger" data-act="delete">Delete</button>') + "</div>") +
+        confirm + "</li>";
+    }).join("");
+    const ri = $("#renameInp");
+    if (ri) { ri.focus(); ri.select(); ri.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); renameDeck(); } if (e.key === "Escape") { renamingId = null; renderDecks(); } }); }
+  }
+
+  function nameTaken(name, exceptId) {
+    const k = norm(name).replace(/\s+/g, " ");
+    return deckList().find((d) => norm(d.name).replace(/\s+/g, " ") === k && d.id !== exceptId);
+  }
+  async function createDeck(name) {
+    const id = newId("d");
+    const used = new Set([0].concat([...deckDocs.values()].map((d) => d.color)));
+    let color = 1; while (used.has(color) && color < DECK_COLORS.length - 1) color++;
+    await decksCol.doc(id).set({ name, createdAt: Date.now(), color });
+    return id;
+  }
+  $("#newDeckForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const inp = $("#newDeckName"), note = $("#deckNote"), name = inp.value.trim().replace(/\s+/g, " ");
+    note.className = "note"; note.textContent = "";
+    if (!decksCol) { note.className = "note err"; note.textContent = "Not connected. Open this page in Claude while signed in."; return; }
+    if (!name) { note.className = "note err"; note.textContent = "Type a name for the deck."; inp.focus(); return; }
+    if (nameTaken(name)) { note.className = "note err"; note.textContent = "You already have a deck called “" + name + "”."; return; }
+    const btn = $("#newDeckBtn"); btn.disabled = true;
+    try { await createDeck(name); inp.value = ""; toast("Created deck “" + name + "”"); }
+    catch (err) { note.className = "note err"; note.textContent = "Couldn't create the deck. Check your connection and try again."; }
+    finally { btn.disabled = false; }
+  });
+
+  async function renameDeck() {
+    const id = renamingId, inp = $("#renameInp"); if (!id || !inp) return;
+    const name = inp.value.trim().replace(/\s+/g, " ");
+    if (!name) { inp.focus(); return; }
+    if (nameTaken(name, id)) { toast("You already have a deck called “" + name + "”"); inp.focus(); return; }
+    try {
+      if (id === DEFAULT_ID) await decksCol.doc(DEFAULT_ID).set({ name, createdAt: 0, color: 0 });
+      else await decksCol.doc(id).update({ name });
+      renamingId = null; renderDecks(); toast("Renamed to “" + name + "”");
+    } catch (err) { toast("Couldn't rename the deck. Try again."); }
+  }
+
+  async function deleteDeck(id, mode) {
+    if (deckBusy) return;
+    deckBusy = true;
+    const name = deckName(id), ws = wordsIn(id);
+    ul_busy(true);
+    try {
+      for (const w of ws) {
+        if (mode === "move") await writeDoc(w.id, { deckId: DEFAULT_ID }, true);
+        else if (mode === "all") await col.doc(w.id).delete();
+      }
+      await decksCol.doc(id).delete();
+      if (studyDeck === id) { studyDeck = "all"; lsSet("lexicard.studyDeck", "all"); }
+      if (addDeck === id) { addDeck = DEFAULT_ID; lsSet("lexicard.addDeck", DEFAULT_ID); }
+      deletingId = null;
+      toast(mode === "move" ? "Deleted “" + name + "” and moved " + plural(ws.length, "word") : "Deleted “" + name + "”");
+    } catch (err) {
+      toast("Couldn't finish deleting “" + name + "”. Try again.");
+    } finally { deckBusy = false; ul_busy(false); renderDecks(); }
+  }
+  function ul_busy(b) { $("#deckList").querySelectorAll("button").forEach((x) => { x.disabled = b; }); }
+
+  $("#deckList").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-act]"); if (!b || deckBusy) return;
+    const id = b.closest(".deck").dataset.id, act = b.dataset.act;
+    if (act === "study") { selectStudyDeck(id); show("study"); }
+    else if (act === "move") { listDeck = id; $("#search").value = ""; renderDeckSelects(); show("words"); enterSelect(); }
+    else if (act === "rename") { renamingId = id; deletingId = null; renderDecks(); }
+    else if (act === "rename-save") renameDeck();
+    else if (act === "rename-cancel") { renamingId = null; renderDecks(); }
+    else if (act === "delete") { deletingId = id; renamingId = null; renderDecks(); }
+    else if (act === "del-cancel") { deletingId = null; renderDecks(); }
+    else if (act === "del-move") deleteDeck(id, "move");
+    else if (act === "del-all") deleteDeck(id, "all");
+    else if (act === "del-empty") deleteDeck(id, "empty");
+  });
+
+  // ---------- tabs ----------
+  const VIEWS = ["study", "add", "decks", "words"];
+  function show(v) {
+    view = v;
+    for (const b of document.querySelectorAll(".tab")) b.setAttribute("aria-selected", String(b.dataset.view === v));
+    for (const name of VIEWS) $("#view-" + name).hidden = name !== v;
+    $("#view-words").style.display = v === "words" ? "flex" : "";
+    $("#view-decks").style.display = v === "decks" ? "flex" : "";
+    lsSet("lexicard.view", v);
+    if (v !== "words" && typeof exitSelect === "function") exitSelect();
+    if (v === "study") { renderChips(); if (!sessionActive) startSession(false); }
+    if (v === "words") renderList();
+    if (v === "decks") { renamingId = null; deletingId = null; renderDecks(); }
+    if (v === "add" && !editingId) { renderDeckSelects(); setTimeout(() => { if (matchMedia("(hover: hover)").matches) $("#fWord").focus(); }, 30); }
+  }
+  document.querySelectorAll(".tab").forEach((b) => b.addEventListener("click", () => {
+    if (b.dataset.view === "add" && editingId) resetForm();
+    show(b.dataset.view);
+  }));
+  document.querySelectorAll("[data-go]").forEach((b) => b.addEventListener("click", () => { resetForm(); show(b.dataset.go); }));
+
+  // ---------- example sentences: 3 per word, written once, shown in turn ----------
+  const EXTRA = 2; // the word's own sentence + 2 more = 3
+  function cleanExamples(arr) {
+    return (Array.isArray(arr) ? arr : []).map((x) => String(x || "").trim()).filter((x) => x.length > 4 && x.length < 300).slice(0, EXTRA);
+  }
+  const extraCount = (w) => (Array.isArray(w.examples) ? w.examples.filter(Boolean).length : 0);
+  function exampleFor(w) {
+    const list = [w.example].concat(Array.isArray(w.examples) ? w.examples.slice(0, EXTRA) : []).map((x) => String(x || "").trim()).filter(Boolean);
+    if (!list.length) return "";
+    if (!settings.varyExamples || list.length < 2) return list[0];
+    return list[(w.reviews || 0) % list.length];
+  }
+  // Words saved before this feature get their 2 extra sentences once, 10 words per Claude request
+  const exQueue = [], exAsked = new Set();
+  let exBusy = false, exPausedUntil = 0, exOff = false, exTimer = null;
+  function ensureExamples(w) {
+    if (!w || !sampler || exOff || !settings.varyExamples || !col) return;
+    if (extraCount(w) >= EXTRA || exAsked.has(w.id) || !w.definition) return;
+    exAsked.add(w.id); exQueue.push(w.id);
+    clearTimeout(exTimer); exTimer = setTimeout(pumpExamples, 400);
+  }
+  async function pumpExamples() {
+    if (exBusy || !exQueue.length || Date.now() < exPausedUntil) return;
+    const batch = exQueue.splice(0, 10).map((id) => words.get(id)).filter((w) => w && extraCount(w) < EXTRA);
+    if (!batch.length) { if (exQueue.length) pumpExamples(); return; }
+    exBusy = true;
+    try {
+      const r = await sampler.json(
+        "Write 2 different, natural example sentences for each word below, for an upper-intermediate (B2) English learner. " +
+        "Each sentence uses the word in the meaning given, is 8 to 20 words long, is set in an everyday situation, and is different from the existing sentence.\n\n" +
+        batch.map((w, i) => (i + 1) + ". " + JSON.stringify(w.word) + (w.pos ? " (" + posFull(w.pos) + ")" : "") + ", meaning: " + JSON.stringify(w.definition) + (w.example ? ", existing sentence: " + JSON.stringify(w.example) : "")).join("\n") +
+        "\n\nReply with only a JSON array with one item per word, in the same order. Each item is an array of 2 strings.", { modelTier: "quick" });
+      const arr = Array.isArray(r) ? r : [];
+      for (let i = 0; i < batch.length; i++) {
+        const item = arr[i];
+        const list = cleanExamples(Array.isArray(item) ? item : item && item.examples);
+        if (list.length) await writeDoc(batch[i].id, { examples: list }, true);
+      }
+    } catch (e) {
+      const c = e && e.code;
+      if (c === "not_granted") exOff = true;
+      else if (c === "rate_limited") exPausedUntil = Date.now() + 120000;
+    } finally { exBusy = false; if (exQueue.length) setTimeout(pumpExamples, 800); }
+  }
+
+  // ---------- study ----------
+  function paintCard(w, isExample) {
+    const pf = posFull(w.pos);
+    $("#swiper").style.setProperty("--dc", isExample ? "var(--accent)" : deckColor(deckIdOf(w)));
+    $("#cFrontTag").innerHTML = esc(w.ipa || "") || "&nbsp;";
+    $("#cPos").textContent = pf ? "(" + pf + ")" : "";
+    $("#cPos").hidden = !pf;
+    $("#cBackTag").innerHTML = "<b>" + esc(w.word) + "</b>" + (pf ? "  (" + esc(pf) + ")" : "");
+    const chip = $("#cChip");
+    chip.textContent = isExample ? "Example" : stageOf(w);
+    chip.classList.toggle("example", !!isExample);
+    $("#cChip2").textContent = isExample ? "Example" : (studyDeck === "all" && deckList().length > 1 ? deckName(deckIdOf(w)) : "Meaning");
+    $("#cChip2").classList.toggle("example", !!isExample);
+    $("#cWord").textContent = w.word;
+    const exText = isExample ? w.example : exampleFor(w);
+    $("#cEx").innerHTML = exText ? highlight(exText, w.word) : "";
+    $("#cExRow").hidden = !exText;
+    $("#cDef").textContent = w.definition || "No definition yet. Edit this card to add one.";
+    $("#cBackEx").innerHTML = exText ? highlight(exText, w.word) : "";
+    if (!isExample) { ensureExamples(w); queue.slice(0, 9).forEach((id) => ensureExamples(words.get(id))); }
+    // A new card always starts face up, without the flip animation (so its meaning never flashes)
+    const cardEl = $("#card");
+    cardEl.classList.add("noanim");
+    setFlipped(false);
+    void cardEl.offsetWidth;
+    cardEl.classList.remove("noanim");
+    if (!isExample) {
+      $("#iAgain").textContent = "in a few cards";
+      $("#iHard").textContent = "later today";
+      $("#iGood").textContent = "in " + fmtDays(previewGood(w));
+    }
+  }
+  function setFlipped(f) {
+    flipped = f;
+    $("#card").classList.toggle("flipped", f);
+    $("#cHint").hidden = f;
+    const interactive = !!current;
+    $("#flipActions").hidden = f || !interactive;
+    $("#gradeActions").hidden = !f || !interactive;
+  }
+  function flip() { setFlipped(!flipped); }
+  $("#card").addEventListener("click", () => { if (!suppressClick) flip(); });
+  $("#card").addEventListener("keydown", (e) => { if (e.key === "Enter" && e.target === e.currentTarget) { e.preventDefault(); flip(); } });
+  $("#flipBtn").addEventListener("click", () => setFlipped(true));
+  document.querySelectorAll(".gbtn").forEach((b) => b.addEventListener("click", () => animateGrade(b.dataset.g)));
+  document.addEventListener("keydown", (e) => {
+    if (view !== "study" || e.target.closest("input, textarea, select") || e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.key === " " && !$("#stage").hidden) { e.preventDefault(); flip(); }
+    else if (current && e.key === "ArrowRight") { e.preventDefault(); animateGrade("good"); }
+    else if (current && e.key === "ArrowLeft") { e.preventDefault(); animateGrade("again"); }
+    else if (current && e.key === "ArrowUp") { e.preventDefault(); animateGrade("hard"); }
+    else if (flipped && current && ["1", "2", "3"].includes(e.key)) animateGrade({ 1: "again", 2: "hard", 3: "good" }[e.key]);
+  });
+
+  // ---------- swipe: right = knew it, left = didn't know, up = review again ----------
+  const swiper = $("#swiper");
+  let drag = null, suppressClick = false, animating = false;
+  const threshold = () => Math.min(110, swiper.offsetWidth * 0.26);
+  const downThreshold = () => Math.min(120, swiper.offsetHeight * 0.28);
+  const reduceMotion = () => { try { return matchMedia("(prefers-reduced-motion: reduce)").matches; } catch (e) { return false; } };
+  // Which answer the card is leaning towards, and how strongly (1 = enough to count on release)
+  function leaning(dx, dy) {
+    const opts = [["good", dx / threshold()], ["again", -dx / threshold()], ["hard", -dy / downThreshold()]];
+    opts.sort((a, b) => b[1] - a[1]);
+    return { g: opts[0][0], score: opts[0][1] };
+  }
+  function setDrag(dx, dy) {
+    dx = dx || 0; dy = dy || 0;
+    // Free movement in every direction; pulling down meets resistance because it has no answer
+    const vy = dy < 0 ? dy : dy * 0.3;
+    swiper.style.transform = (dx || dy) ? "translate(" + dx + "px," + vy + "px) rotate(" + (dx / 22) + "deg)" : "";
+    const L = leaning(dx, dy);
+    const op = (g) => (L.g === g && L.score > 0.15) ? Math.min(1, L.score) : 0;
+    $("#stampGood").style.opacity = op("good");
+    $("#stampAgain").style.opacity = op("again");
+    $("#stampHard").style.opacity = op("hard");
+  }
+  function resetSwiper() { swiper.style.transition = "none"; swiper.style.opacity = ""; setDrag(0, 0); }
+  function startDrag(x, y, extra) { drag = Object.assign({ x, y, dx: 0, dy: 0, active: false, samples: [{ dx: 0, dy: 0, t: Date.now() }] }, extra); }
+  // Returns false when the gesture belongs to the page (finger starts moving down), "wait" while undecided.
+  function moveDrag(dx, dy) {
+    if (!drag.active) {
+      if (dy > 8 && dy > Math.abs(dx)) { drag = null; return false; }
+      if (Math.abs(dx) < 8 && dy > -8) return "wait";
+      drag.active = true;
+      swiper.classList.add("dragging");
+      swiper.style.transition = "none";
+    }
+    drag.dx = dx; drag.dy = dy;
+    const now = Date.now();
+    drag.samples.push({ dx, dy, t: now });
+    while (drag.samples.length > 2 && now - drag.samples[0].t > 120) drag.samples.shift();
+    setDrag(dx, dy);
+    return true;
+  }
+  const hasTouch = "ontouchstart" in window;
+  swiper.addEventListener("pointerdown", (e) => {
+    if (!current || animating || e.button > 0) return;
+    if (hasTouch && e.pointerType === "touch") return; // fingers use the touch handlers below
+    startDrag(e.clientX, e.clientY, { id: e.pointerId });
+  });
+  swiper.addEventListener("pointermove", (e) => {
+    if (!drag || drag.touch || e.pointerId !== drag.id) return;
+    const was = drag.active;
+    if (moveDrag(e.clientX - drag.x, e.clientY - drag.y) === true && !was) { try { swiper.setPointerCapture(e.pointerId); } catch (err) {} }
+  });
+  swiper.addEventListener("touchstart", (e) => {
+    if (!current || animating || e.touches.length > 1) { drag = null; return; }
+    const t = e.touches[0];
+    startDrag(t.clientX, t.clientY, { touch: true });
+  }, { passive: true });
+  swiper.addEventListener("touchmove", (e) => {
+    if (!drag || !drag.touch) return;
+    const t = e.touches[0];
+    if (moveDrag(t.clientX - drag.x, t.clientY - drag.y) !== false && e.cancelable) e.preventDefault();
+  }, { passive: false });
+  swiper.addEventListener("touchend", () => { if (drag && drag.touch) endDrag(false); });
+  swiper.addEventListener("touchcancel", () => { if (drag && drag.touch) endDrag(false); });
+  function endDrag(cancelled) {
+    if (!drag) return;
+    const d = drag; drag = null;
+    if (!d.active) return;
+    suppressClick = true; setTimeout(() => { suppressClick = false; }, 350);
+    swiper.classList.remove("dragging");
+    // Decide by where the card is when you let go; a quick flick in one direction also counts
+    const L = leaning(d.dx, d.dy);
+    const first = d.samples[0], lastS = d.samples[d.samples.length - 1];
+    const dt = Math.max(1, lastS.t - first.t);
+    const vx = (lastS.dx - first.dx) / dt, vy = (lastS.dy - first.dy) / dt;
+    const speed = L.g === "good" ? vx : L.g === "again" ? -vx : -vy;
+    const flick = L.score > 0.4 && speed > 0.5;
+    if (!cancelled && (L.score >= 1 || flick)) animateGrade(L.g);
+    else {
+      // Spring back with a small overshoot
+      swiper.style.transition = "transform .45s cubic-bezier(.34,1.56,.64,1)";
+      setDrag(0, 0);
+    }
+  }
+  swiper.addEventListener("pointerup", () => { if (drag && !drag.touch) endDrag(false); });
+  swiper.addEventListener("pointercancel", () => { if (drag && !drag.touch) endDrag(true); });
+
+  function animateGrade(g) {
+    if (!current || animating) return;
+    if (reduceMotion()) { resetSwiper(); grade(g); return; }
+    animating = true;
+    const dir = g === "good" ? 1 : g === "again" ? -1 : 0;
+    swiper.style.transition = "transform .3s cubic-bezier(.4,0,.9,.6), opacity .3s";
+    if (dir) {
+      swiper.style.transform = "translateX(" + dir * (swiper.offsetWidth + 160) + "px) rotate(" + dir * 16 + "deg)";
+      $(dir > 0 ? "#stampGood" : "#stampAgain").style.opacity = 1;
+    } else {
+      swiper.style.transform = "translateY(" + (-Math.round(window.innerHeight * 0.8)) + "px) rotate(-2deg)";
+      swiper.style.opacity = "0";
+      $("#stampHard").style.opacity = 1;
+    }
+    setTimeout(() => {
+      grade(g);
+      resetSwiper();
+      if (current) {
+        swiper.style.transform = "translateY(14px) scale(.96)"; swiper.style.opacity = "0";
+        void swiper.offsetWidth;
+        swiper.style.transition = "transform .26s cubic-bezier(.2,.8,.2,1), opacity .2s";
+        swiper.style.transform = ""; swiper.style.opacity = "";
+      }
+      animating = false;
+    }, 280);
+  }
+
+  function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+
+  function startSession(isPractice) {
+    if (!loaded) return;
+    if (studyDeck !== "all" && decksLoaded && !deckExists(studyDeck)) { studyDeck = "all"; lsSet("lexicard.studyDeck", "all"); renderChips(); }
+    practice = isPractice;
+    const pool = wordsIn(studyDeck);
+    const st = studyable(studyDeck);
+    const list = isPractice ? shuffle(pool) : st.reviews.concat(st.fresh);
+    queue = list.map((w) => w.id);
+    list.slice(0, 10).forEach(ensureExamples);
+    sessionTotal = queue.length; doneCount = 0;
+    sessionActive = queue.length > 0;
+    next();
+  }
+  function next() {
+    current = null;
+    while (queue.length) {
+      const id = queue.shift();
+      if (words.has(id)) { current = words.get(id); break; }
+    }
+    renderStudy();
+  }
+  function renderStudy() {
+    const pool = wordsIn(studyDeck);
+    const st = studyable(studyDeck);
+    const total = pool.length, due = st.count;
+    const label = studyDeck === "all" ? (deckList().length > 1 ? "across all decks" : "in your deck") : "in “" + deckName(studyDeck) + "”";
+    $("#emptyPanel").hidden = true; $("#donePanel").hidden = true; $("#offPanel").hidden = true;
+    $("#stage").hidden = false; $("#kbdHint").hidden = false;
+    $("#barWrap").hidden = !current;
+    if (offline) {
+      current = null; paintCard(EXAMPLE, true);
+      $("#offPanel").hidden = false; $("#metaLeft").textContent = ""; $("#metaRight").textContent = ""; $("#kbdHint").hidden = true;
+      return;
+    }
+    if (!loaded) return;
+    if (total === 0) {
+      current = null; paintCard(EXAMPLE, true);
+      $("#emptyPanel").hidden = false; $("#kbdHint").hidden = true;
+      if (words.size === 0) {
+        $("#emptyTitle").textContent = "You have no words yet";
+        $("#emptyText").textContent = "The card above is an example. Add your first word and it will show up here, on your phone and on your computer.";
+      } else {
+        $("#emptyTitle").textContent = "“" + deckName(studyDeck) + "” is empty";
+        $("#emptyText").textContent = "Add words to this deck, or pick another deck above.";
+      }
+      $("#metaLeft").textContent = "No words " + label; $("#metaRight").textContent = "";
+      return;
+    }
+    if (current) {
+      paintCard(current, false);
+      $("#metaLeft").innerHTML = (practice ? "<strong>Practice</strong>" : "<strong>" + due + "</strong> to review") + " · " + esc(plural(total, "word")) + " " + esc(label);
+      $("#metaRight").textContent = Math.min(doneCount + 1, sessionTotal) + " / " + sessionTotal;
+      $("#bar").style.width = (sessionTotal ? (doneCount / sessionTotal) * 100 : 0) + "%";
+      return;
+    }
+    // finished or nothing due
+    sessionActive = false;
+    $("#stage").hidden = true; $("#kbdHint").hidden = true;
+    $("#donePanel").hidden = false;
+    const upcoming = pool.filter((w) => !isNewWord(w) && (w.due || 0) > Date.now()).sort((a, b) => a.due - b.due)[0];
+    $("#doneTitle").textContent = doneCount > 0 ? (practice ? "Practice finished" : "Done for today") : "Nothing due right now";
+    let txt = doneCount > 0 ? "You reviewed " + plural(doneCount, "card") + ". " : "";
+    if (due > 0) txt += due + " word" + (due > 1 ? "s are" : " is") + " waiting for review.";
+    else if (upcoming) txt += "Next review: “" + upcoming.word + "” " + when(upcoming.due) + ".";
+    if (!practice && st.waitingNew > 0) txt += " " + plural(st.waitingNew, "new word") + " will start tomorrow (daily limit: " + settings.newPerDay + ").";
+    const streak = streakOf(reviewsByDay(), dayIndex(Date.now()));
+    if (streak > 1) txt += " You've studied " + streak + " days in a row.";
+    const lastB = parseInt(lsGet("lexicard.lastBackup") || "0", 10);
+    if (!practice && words.size >= 20 && Date.now() - lastB > 14 * DAY) txt += " Tip: download a backup of your words (Decks → Backup).";
+    $("#doneText").textContent = txt;
+    $("#studyDueBtn").hidden = due === 0;
+    $("#practiceBtn").textContent = studyDeck === "all" ? "Practice all words" : "Practice this deck";
+    $("#metaLeft").innerHTML = "<strong>" + total + "</strong> word" + (total > 1 ? "s" : "") + " " + esc(label);
+    $("#metaRight").textContent = "";
+  }
+  $("#practiceBtn").addEventListener("click", () => startSession(true));
+  $("#studyDueBtn").addEventListener("click", () => startSession(false));
+
+  function writeDoc(id, data, quiet) {
+    const prev = writeChain.get(id) || Promise.resolve();
+    const p = prev.catch(() => {}).then(() => col.doc(id).update(data));
+    writeChain.set(id, p);
+    if (!quiet) p.catch((e) => toast(e && e.code === "quota_exceeded" ? "Storage is full. Delete some words to keep saving." : "Couldn't save your answer. Check your connection."));
+    return p;
+  }
+  function grade(g) {
+    if (!current) return;
+    const w = current;
+    // Didn't know: comes back after 3 cards. Review again: comes back at the end of today's session.
+    if (g === "again") queue.splice(Math.min(3, queue.length), 0, w.id);
+    else if (g === "hard") queue.push(w.id);
+    else doneCount++;
+    if (!practice && col) {
+      const gn = g === "again" ? 1 : g === "hard" ? 2 : 3, now = Date.now();
+      const upd = schedule(w, gn, now);
+      // compact review log for the stats page: day number * 10 + answer
+      upd.hist = (Array.isArray(w.hist) ? w.hist : []).concat([dayIndex(now) * 10 + gn]).slice(-400);
+      words.set(w.id, { ...w, ...upd }); // a repeat later in this session uses the new memory state
+      writeDoc(w.id, upd);
+    }
+    next();
+  }
+
+  // ---------- add / edit ----------
+  const F = { word: $("#fWord"), ex: $("#fEx"), def: $("#fDef"), pos: $("#fPos"), ipa: $("#fIpa") };
+  $("#fDeck").addEventListener("change", () => {
+    const isNew = $("#fDeck").value === "__new";
+    $("#fNewDeck").hidden = !isNew;
+    if (isNew) $("#fNewDeck").focus();
+    // the duplicate rule depends on the chosen deck
+    checkDup(); refreshStatuses(); updatePendingButtons();
+  });
+  let fillExamples = null;
+  let addMode = "many";
+  function setAddMode(m) {
+    addMode = m;
+    $("#modeOne").setAttribute("aria-pressed", String(m === "one"));
+    $("#modeMany").setAttribute("aria-pressed", String(m === "many"));
+    $("#form").hidden = m !== "one";
+    $("#bulk").hidden = m !== "many";
+    if (!editingId) $("#formTitle").textContent = m === "one" ? "New word" : "New words";
+    if (m === "many") renderPending();
+  }
+  $("#modeOne").addEventListener("click", () => setAddMode("one"));
+  $("#modeMany").addEventListener("click", () => { if (editingId) resetForm(); setAddMode("many"); });
+  function resetForm() {
+    editingId = null; fillExamples = null;
+    $("#exCount").textContent = ""; $("#addModes").hidden = false;
+    for (const k in F) F[k].value = "";
+    $("#fNewDeck").value = "";
+    $("#fDeck").value = "";
+    renderDeckSelects();
+    $("#formTitle").textContent = "New word"; $("#formMode").textContent = "";
+    $("#saveBtn").textContent = "Save card";
+    $("#cancelBtn").hidden = true; $("#delBtn").hidden = true; disarm();
+    $("#formNote").textContent = ""; $("#formNote").className = "note";
+    dupTarget = null;
+    $("#dupWarn").hidden = true; F.word.classList.remove("isdup"); $("#saveBtn").disabled = false;
+    setAddMode(addMode);
+  }
+  function editWord(id) {
+    const w = words.get(id); if (!w) return;
+    resetForm(); editingId = id;
+    F.word.value = w.word || ""; F.ex.value = w.example || ""; F.def.value = w.definition || "";
+    F.pos.value = w.pos || ""; F.ipa.value = w.ipa || "";
+    renderDeckSelects(); $("#fDeck").value = deckIdOf(w); $("#fNewDeck").hidden = true;
+    $("#formTitle").textContent = "Edit card"; $("#formMode").textContent = stageOf(w) + (!isNewWord(w) && w.due ? " · next review " + when(w.due) : "");
+    $("#saveBtn").textContent = "Save changes";
+    $("#cancelBtn").hidden = false; $("#delBtn").hidden = false;
+    $("#addModes").hidden = true; setAddMode("one"); $("#formTitle").textContent = "Edit card";
+    const nEx = Math.min(EXTRA, extraCount(w));
+    $("#exCount").textContent = nEx ? "+" + plural(nEx, "more example sentence") + " rotate when you study this word." : "";
+    show("add");
+  }
+  $("#cancelBtn").addEventListener("click", () => { resetForm(); show("words"); });
+
+  // A word may be in several decks, but only once per deck
+  function targetDeck() { const v = $("#fDeck").value; return v === "__new" ? "__new" : (deckExists(v) ? v : DEFAULT_ID); }
+  function sameWords(word) {
+    const n = wordKey(word);
+    if (!n) return [];
+    return all().filter((w) => wordKey(w.word) === n && w.id !== editingId);
+  }
+  function dupOf(word, deckId) {
+    const d = deckId || targetDeck();
+    if (d === "__new") return null;
+    return sameWords(word).find((w) => deckIdOf(w) === d) || null;
+  }
+  function elsewhereOf(word, deckId) {
+    const d = deckId || targetDeck();
+    return sameWords(word).filter((w) => deckIdOf(w) !== d);
+  }
+  const deckNames = (list) => [...new Set(list.map((w) => "“" + deckName(deckIdOf(w)) + "”"))].join(", ");
+  let dupTarget = null;
+  function checkDup() {
+    const d = F.word.value.trim() ? dupOf(F.word.value) : null;
+    dupTarget = d || null;
+    $("#dupWarn").hidden = !d;
+    F.word.classList.toggle("isdup", !!d);
+    $("#saveBtn").disabled = !!d;
+    const others = !d && F.word.value.trim() ? elsewhereOf(F.word.value) : [];
+    $("#dupInfo").hidden = !others.length;
+    if (others.length) $("#dupInfo").textContent = "Also saved in your " + deckNames(others) + " deck. You can still add it to this deck.";
+    if (d) {
+      $("#dupTitle").textContent = deckList().length > 1 ? "Already saved in this deck (“" + deckName(deckIdOf(d)) + "”)." : "This word is already saved.";
+      $("#dupDef").textContent = "“" + d.word + "”: " + (d.definition || "no definition yet");
+      $("#saveBtn").textContent = "Already saved";
+    } else {
+      $("#saveBtn").textContent = editingId ? "Save changes" : "Save card";
+    }
+    return d;
+  }
+  F.word.addEventListener("input", checkDup);
+  $("#dupOpen").addEventListener("click", () => { if (dupTarget) editWord(dupTarget.id); });
+
+  $("#form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const note = $("#formNote"); note.className = "note";
+    const data = {
+      word: F.word.value.trim(), example: F.ex.value.trim(), definition: F.def.value.trim(),
+      pos: F.pos.value.trim(), ipa: F.ipa.value.trim(), updatedAt: Date.now()
+    };
+    const err = (msg, el) => { note.className = "note err"; note.textContent = msg; if (el) el.focus(); };
+    if (!data.word) return err("Type a word first.", F.word);
+    if (!data.definition) return err("Add an English definition for the back of the card" + (sampler ? ", or press Fill with Claude." : "."), F.def);
+    if (!col) return err("Not connected. Open this page in Claude while signed in.");
+    if (checkDup()) return err("“" + data.word + "” is already saved, so it wasn't saved again.");
+    let deckSel = $("#fDeck").value;
+    const newName = $("#fNewDeck").value.trim().replace(/\s+/g, " ");
+    if (deckSel === "__new" && !newName) return err("Type a name for the new deck.", $("#fNewDeck"));
+    const btn = $("#saveBtn"); btn.disabled = true;
+    try {
+      if (deckSel === "__new") {
+        const existing = nameTaken(newName);
+        deckSel = existing ? existing.id : await createDeck(newName);
+        $("#fNewDeck").value = ""; pendingDeck = deckSel;
+      }
+      data.deckId = deckExists(deckSel) || deckSel.startsWith("d") ? deckSel : DEFAULT_ID;
+      if (fillExamples && fillExamples.key === wordKey(data.word)) data.examples = fillExamples.list;
+      else if (editingId) {
+        const old = words.get(editingId);
+        if (old && (norm(old.definition) !== norm(data.definition) || wordKey(old.word) !== wordKey(data.word))) data.examples = [];
+      }
+      if (editingId) {
+        const id = editingId;
+        await writeDoc(id, data, true);
+        toast("Saved changes to “" + data.word + "”");
+        resetForm(); show("words");
+      } else {
+        addDeck = data.deckId; lsSet("lexicard.addDeck", addDeck);
+        let id = newId("w");
+        while (words.has(id)) id = newId("w");
+        const now = Date.now();
+        await col.doc(id).set({ ...data, createdAt: now, reviews: 0 });
+        const n = wordsIn(data.deckId).length + (words.has(id) ? 0 : 1);
+        toast("Added “" + data.word + "” · " + plural(n, "word") + " in “" + deckName(data.deckId) + "”");
+        resetForm(); $("#fDeck").value = addDeck; F.word.focus();
+      }
+    } catch (ex) {
+      err(ex && ex.code === "quota_exceeded" ? "Storage is full. Delete some words, then try again." : "Couldn't save. Check your connection and try again.");
+    } finally { btn.disabled = false; checkDup(); }
+  });
+
+  let armT;
+  function disarm() { const b = $("#delBtn"); b.classList.remove("armed"); b.textContent = "Delete"; clearTimeout(armT); }
+  $("#delBtn").addEventListener("click", async () => {
+    const b = $("#delBtn");
+    if (!b.classList.contains("armed")) { b.classList.add("armed"); b.textContent = "Tap again to delete"; armT = setTimeout(disarm, 3500); return; }
+    const id = editingId, w = words.get(id);
+    try { await col.doc(id).delete(); toast("Deleted “" + (w ? w.word : "word") + "”"); resetForm(); show("words"); }
+    catch (e) { toast("Couldn't delete. Try again."); disarm(); }
+  });
+
+  // Claude lookup
+  const ENTRY_RULES = "Rules: \"word\" is the dictionary base form (fix spelling if needed). \"pos\" is the word class in full, lowercase: noun, verb, adjective, adverb, phrasal verb, preposition, conjunction, pronoun, idiom or phrase. \"ipa\" is British IPA between slashes. " +
+    "\"definition\" is in simple, clear English, at most 25 words, and must not use the word itself. \"example\" is one natural, everyday sentence that uses the word. " +
+    "\"examples\" holds 2 more natural sentences that use the word in the same meaning, each in a different everyday situation.";
+  const ENTRY_SHAPE = '{"word":"reluctant","pos":"adjective","ipa":"/rɪˈlʌktənt/","definition":"not wanting to do something and therefore slow to do it","example":"She was reluctant to admit that she was wrong.","examples":["Many staff were reluctant to work at weekends.","I was reluctant to lend him my car again."]}';
+  function sampleErrText(e) {
+    const c = e && e.code;
+    if (c === "bad_key") return "Your Claude API key was rejected. Check it in Decks → Claude API key.";
+    if (c === "no_credit") return "Your Claude API account has no credit left. Add credit in the Claude Console, or remove the key to use the free chat instead.";
+    if (c === "not_granted") return "Claude lookups are turned off for this page. You can still type definitions yourself.";
+    if (c === "rate_limited") return "Too many lookups in a short time. Wait a minute and try again.";
+    if (c === "invalid_json") return "Claude's answer couldn't be read. Try again.";
+    return "The lookup didn't work. Check your connection and try again.";
+  }
+  $("#fillBtn").addEventListener("click", async () => {
+    const w = F.word.value.trim();
+    const note = $("#formNote");
+    if (!w) { note.className = "note err"; note.textContent = "Type a word first, then press Fill with Claude."; F.word.focus(); return; }
+    const btn = $("#fillBtn"); btn.disabled = true; btn.textContent = "Looking up…";
+    note.className = "note"; note.textContent = "";
+    const ex = F.ex.value.trim();
+    const prompt =
+      "Write one entry for an English-English learner's dictionary (in the style of the Oxford Learner's or Cambridge Learner's dictionary) for an upper-intermediate (B2) learner.\n\n" +
+      "Word or phrase: " + JSON.stringify(w) + "\n" +
+      (ex ? "The learner's own example sentence, so use the meaning that fits it: " + JSON.stringify(ex) + "\n" : "If the word has several meanings, use the most common one.\n") +
+      "\nReply with only a JSON object like this:\n" + ENTRY_SHAPE + "\n\n" + ENTRY_RULES;
+    try {
+      const r = await sampler.json(prompt, { modelTier: "quick" });
+      if (!r || typeof r !== "object" || !r.definition) throw { code: "invalid_json" };
+      if (r.word && norm(r.word) !== norm(w) && !editingId) F.word.value = String(r.word);
+      if (r.pos) F.pos.value = String(r.pos);
+      if (r.ipa) F.ipa.value = String(r.ipa);
+      F.def.value = String(r.definition);
+      if (!ex && r.example) F.ex.value = String(r.example);
+      const more = cleanExamples(r.examples);
+      fillExamples = more.length ? { key: wordKey(F.word.value), list: more } : null;
+      $("#exCount").textContent = more.length ? "+" + plural(more.length, "more example sentence") + " will rotate when you study this word." : "";
+      note.textContent = "Filled by Claude. Check it and edit anything before saving.";
+      checkDup();
+    } catch (e) {
+      note.className = "note err";
+      const c = e && e.code;
+      if (c === "not_granted") { note.textContent = "Claude lookups are turned off for this page. You can still type the definition yourself."; btn.hidden = true; }
+      else if (c === "rate_limited") note.textContent = "Too many lookups in a short time. Wait a minute and try again.";
+      else if (c === "invalid_json") note.textContent = "Claude's answer couldn't be read. Press Fill with Claude again.";
+      else note.textContent = "The lookup didn't work. Check your connection and try again.";
+    } finally { btn.disabled = false; btn.textContent = "Fill with Claude"; }
+  });
+
+  // ---------- word list: one box per word, kept until looked up ----------
+  // pending items: { id, w: typed word, k: key when looked up, e: entry from Claude or null, inc: include when saving }
+  let pending = [], pendingRef = null, pendingSaveT = null, pendingRemoteJSON = "";
+  const pendingJSON = () => JSON.stringify(pending.map((it) => ({ id: it.id, w: it.w, k: it.k || null, e: it.e || null, inc: it.inc !== false })));
+  function savePendingSoon() {
+    clearTimeout(pendingSaveT);
+    pendingSaveT = setTimeout(async () => {
+      const items = JSON.parse(pendingJSON()).filter((it) => it.w.trim());
+      if (!pendingRef) { lsSet("lexicard.pending", JSON.stringify(items)); return; }
+      try { pendingRemoteJSON = JSON.stringify(items); await pendingRef.set({ items, updatedAt: Date.now() }); } catch (e) {}
+    }, 700);
+  }
+  function loadPendingFrom(items) {
+    pending = (Array.isArray(items) ? items : []).filter((it) => it && typeof it.w === "string" && it.w.trim())
+      .map((it) => ({ id: String(it.id || newId("p")), w: it.w, k: it.k || null, e: it.e && typeof it.e === "object" ? it.e : null, inc: it.inc !== false }));
+  }
+  function itemStatus(it) {
+    const k = wordKey(it.w);
+    if (!k) return { cls: "", text: "" };
+    const saved = dupOf(it.w) || (it.e && it.e.word ? dupOf(it.e.word) : null);
+    if (saved) return { cls: "warn", text: "Already saved in this deck", dup: true };
+    const first = pending.find((o) => wordKey(o.w) === k);
+    if (first && first !== it) return { cls: "warn", text: "Already in this list", dup: true };
+    if (it.e && !it.e.definition) return { cls: "warn", text: "Claude found no definition. Check the spelling, then look up again." };
+    const others = elsewhereOf(it.w);
+    if (others.length) return { cls: "info", text: "Also in your " + deckNames(others) + " deck. It will be added to this deck too." };
+    return { cls: "", text: "" };
+  }
+  function rowHTML(it) {
+    const st = itemStatus(it), ready = !!(it.e && it.e.definition) && !st.dup;
+    const off = ready && it.inc === false;
+    return '<li class="prow' + (ready ? " ready" : "") + (off ? " off" : "") + '" data-id="' + esc(it.id) + '">' +
+      '<div class="ptop">' + (ready ? '<input type="checkbox" data-f="inc" aria-label="Save this word"' + (it.inc !== false ? " checked" : "") + ">" : "") +
+      '<input class="inp pin" data-f="w" value="' + esc(it.w) + '" autocomplete="off" autocapitalize="none" spellcheck="false" aria-label="Word">' +
+      '<button type="button" class="px" data-act="remove" aria-label="Remove ' + esc(it.w) + '">×</button></div>' +
+      '<div class="pstat ' + st.cls + '">' + esc(st.text) + "</div>" +
+      (ready ? '<div class="pdetail">' + (it.e.pos ? '<span class="bpos">(' + esc(posFull(it.e.pos)) + ")</span>" : "") +
+        '<div class="blbl">Definition</div><textarea class="inp" data-f="definition" rows="2" aria-label="Definition">' + esc(it.e.definition) + "</textarea>" +
+        '<div class="blbl">Example sentence</div><textarea class="inp" data-f="example" rows="2" aria-label="Example sentence">' + esc(it.e.example || "") + "</textarea></div>" : "") +
+      "</li>";
+  }
+  const NEW_ROW = '<li class="prow" data-id="__new"><div class="ptop"><input class="inp pin" data-f="w" placeholder="Type a word or phrase" autocomplete="off" autocapitalize="none" spellcheck="false" aria-label="New word"></div></li>';
+  function renderPending() {
+    const ul = $("#pList");
+    const focusId = document.activeElement && document.activeElement.closest && document.activeElement.closest(".prow") ? document.activeElement.closest(".prow").dataset.id : null;
+    ul.innerHTML = pending.map(rowHTML).join("") + NEW_ROW;
+    if (focusId) { const el = ul.querySelector('.prow[data-id="' + CSS.escape(focusId) + '"] .pin'); if (el) { el.focus(); const n = el.value.length; try { el.setSelectionRange(n, n); } catch (e) {} } }
+    updatePendingButtons();
+  }
+  function refreshRow(it) {
+    const li = $("#pList").querySelector('.prow[data-id="' + CSS.escape(it.id) + '"]'); if (!li) return;
+    const hadFocus = li.contains(document.activeElement) && document.activeElement.dataset.f === "w";
+    const tmp = document.createElement("ul"); tmp.innerHTML = rowHTML(it);
+    const fresh = tmp.firstChild;
+    li.replaceWith(fresh);
+    if (hadFocus) { const el = fresh.querySelector(".pin"); el.focus(); const n = el.value.length; try { el.setSelectionRange(n, n); } catch (e) {} }
+  }
+  const toLookUp = () => pending.filter((it) => wordKey(it.w) && !it.e && !itemStatus(it).dup);
+  const toSave = () => pending.filter((it) => it.e && it.e.definition && it.inc !== false && !itemStatus(it).dup);
+  function updatePendingButtons() {
+    const look = toLookUp().length, save = toSave().length;
+    const lb = $("#bLookup"), sb = $("#bSave");
+    lb.disabled = !look || lookingUp;
+    if (!lookingUp) lb.textContent = !sampler ? (look ? "Get definitions for " + plural(look, "word") : "Get definitions") : (look ? "Look up " + plural(look, "word") + " with Claude" + (look > 10 ? " (" + Math.ceil(look / 10) + " requests)" : "") : "Look up with Claude");
+    sb.hidden = !save;
+    sb.textContent = "Save " + plural(save, "word");
+    lb.classList.toggle("primary", !save || !!look);
+    $("#tab-add").dataset.count = pending.length;
+  }
+  function pendingById(id) { return pending.find((it) => it.id === id); }
+  function refreshStatuses() {
+    for (const li of $("#pList").querySelectorAll(".prow")) {
+      const it = pendingById(li.dataset.id), el = li.querySelector(".pstat");
+      if (!it || !el) continue;
+      const st = itemStatus(it); el.className = "pstat " + st.cls; el.textContent = st.text;
+    }
+  }
+  function onPendingEdit(e) {
+    const li = e.target.closest(".prow"), f = e.target.dataset.f; if (!li || !f) return;
+    if (li.dataset.id === "__new") {
+      if (!e.target.value.trim()) return;
+      const it = { id: newId("p"), w: e.target.value, k: null, e: null, inc: true };
+      pending.push(it);
+      li.dataset.id = it.id;
+      const top = li.querySelector(".ptop");
+      top.insertAdjacentHTML("beforeend", '<button type="button" class="px" data-act="remove" aria-label="Remove">×</button>');
+      li.insertAdjacentHTML("beforeend", '<div class="pstat"></div>');
+      li.insertAdjacentHTML("afterend", NEW_ROW);
+      e.target.removeAttribute("placeholder");
+    }
+    const it = pendingById(li.dataset.id); if (!it) return;
+    if (f === "w") {
+      it.w = e.target.value;
+      if (it.e && it.k && wordKey(it.w) !== it.k) { it.e = null; it.k = null; refreshRow(it); }
+      refreshStatuses();
+    } else if (f === "inc") { it.inc = e.target.checked; li.classList.toggle("off", !it.inc); }
+    else if (it.e) it.e[f] = e.target.value;
+    updatePendingButtons(); savePendingSoon();
+  }
+  $("#pList").addEventListener("input", onPendingEdit);
+  $("#pList").addEventListener("change", onPendingEdit);
+  $("#pList").addEventListener("keydown", (e) => {
+    if (e.key !== "Enter" || e.target.dataset.f !== "w") return;
+    e.preventDefault();
+    const li = e.target.closest(".prow"), nextLi = li && li.nextElementSibling;
+    const nxt = nextLi && nextLi.querySelector(".pin");
+    if (nxt) nxt.focus();
+  });
+  $("#pList").addEventListener("focusout", (e) => {
+    const li = e.target.closest(".prow");
+    if (!li || li.dataset.id === "__new" || e.target.dataset.f !== "w") return;
+    const it = pendingById(li.dataset.id);
+    if (it && !it.w.trim()) { pending = pending.filter((o) => o !== it); li.remove(); refreshStatuses(); updatePendingButtons(); savePendingSoon(); }
+  });
+  $("#pList").addEventListener("click", (e) => {
+    const b = e.target.closest('[data-act="remove"]'); if (!b) return;
+    const li = b.closest(".prow");
+    pending = pending.filter((o) => o.id !== li.dataset.id);
+    renderPending(); savePendingSoon();
+  });
+
+  let lookingUp = false;
+  $("#bLookup").addEventListener("click", async () => {
+    const note = $("#bNote"); note.className = "note"; note.textContent = "";
+    const todo = toLookUp();
+    if (!todo.length) return;
+    if (!sampler) { openManual(todo); return; }
+    lookingUp = true;
+    const btn = $("#bLookup"); btn.disabled = true;
+    try {
+      for (let i = 0; i < todo.length; i += 10) {
+        const chunk = todo.slice(i, i + 10);
+        btn.textContent = "Looking up " + Math.min(i + chunk.length, todo.length) + " of " + todo.length + "…";
+        const prompt = "Write English-English learner's dictionary entries (in the style of the Oxford Learner's or Cambridge Learner's dictionary) for an upper-intermediate (B2) learner, one for each of these words or phrases:\n" +
+          chunk.map((it, j) => (j + 1) + ". " + JSON.stringify(it.w.trim())).join("\n") +
+          "\n\nIf a word has several meanings, use the most common one. Reply with only a JSON array with one object per word, in the same order. Each object looks like this:\n" + ENTRY_SHAPE + "\n\n" + ENTRY_RULES;
+        const r = await sampler.json(prompt, { modelTier: "quick" });
+        const arr = Array.isArray(r) ? r : (r && Array.isArray(r.entries) ? r.entries : []);
+        chunk.forEach((it, j) => {
+          const byKey = arr.find((x) => x && typeof x === "object" && wordKey(x.word) === wordKey(it.w));
+          const e = byKey || (arr[j] && typeof arr[j] === "object" ? arr[j] : {});
+          it.e = { word: String(e.word || it.w).trim(), pos: String(e.pos || ""), ipa: String(e.ipa || ""), definition: String(e.definition || "").trim(), example: String(e.example || "").trim(), examples: cleanExamples(e.examples) };
+          if (it.e.word && wordKey(it.e.word) !== wordKey(it.w)) it.w = it.e.word; // Claude fixed the spelling
+          it.k = wordKey(it.w); it.inc = true;
+        });
+        renderPending(); savePendingSoon();
+      }
+      note.textContent = "Check each word, untick any you don't want, then save.";
+    } catch (e) {
+      note.className = "note err"; note.textContent = sampleErrText(e);
+    } finally { lookingUp = false; btn.disabled = false; renderPending(); }
+  });
+
+  // ----- free path: copy a request into the Claude chat, paste the answer back -----
+  let manualIds = [];
+  const MANUAL_MAX = 30;
+  function manualPrompt(items) {
+    return "Write English-English learner's dictionary entries (in the style of the Oxford Learner's or Cambridge Learner's dictionary) for an upper-intermediate (B2) learner, one for each of these words or phrases:\n" +
+      items.map((it, j) => (j + 1) + ". " + JSON.stringify(it.w.trim())).join("\n") +
+      "\n\nIf a word has several meanings, use the most common one. Reply in this chat with a single JSON code block and nothing else: do not create a file or an artifact. " +
+      "The JSON is an array with one object per word, in the same order. Each object looks like this:\n" + ENTRY_SHAPE + "\n\n" + ENTRY_RULES;
+  }
+  function openManual(todo) {
+    const items = todo.slice(0, MANUAL_MAX);
+    manualIds = items.map((it) => it.id);
+    $("#mPrompt").value = manualPrompt(items);
+    $("#mPrompt").hidden = true;
+    $("#mIntro").textContent = "Free, using your Claude account. This request covers " + plural(items.length, "word") +
+      (todo.length > MANUAL_MAX ? " (" + MANUAL_MAX + " at a time; do the rest after these)" : "") + ".";
+    $("#mCopyNote").textContent = ""; $("#mPaste").value = ""; $("#mNote").textContent = ""; $("#mNote").className = "note";
+    $("#manual").hidden = false;
+    try { $("#manual").scrollIntoView({ behavior: "smooth", block: "start" }); } catch (e) {}
+  }
+  $("#mCopy").addEventListener("click", async () => {
+    try { await navigator.clipboard.writeText($("#mPrompt").value); $("#mCopyNote").textContent = "Copied"; }
+    catch (e) {
+      const t = $("#mPrompt"); t.hidden = false; t.focus(); t.select();
+      $("#mCopyNote").textContent = "Select all the text below and copy it";
+    }
+  });
+  $("#mClose").addEventListener("click", () => { $("#manual").hidden = true; });
+  $("#mFill").addEventListener("click", () => {
+    const note = $("#mNote"); note.className = "note";
+    let arr;
+    try { arr = window.LexicardLocal.parseJSONLoose($("#mPaste").value); }
+    catch (e) { note.className = "note err"; note.textContent = "That doesn't look like Claude's answer. Copy the whole answer, including the [ ] brackets, and paste it again."; return; }
+    if (!Array.isArray(arr)) arr = arr && Array.isArray(arr.entries) ? arr.entries : [];
+    const items = manualIds.map((id) => pendingById(id)).filter(Boolean);
+    let filled = 0;
+    items.forEach((it, j) => {
+      const byKey = arr.find((x) => x && typeof x === "object" && wordKey(x.word) === wordKey(it.w));
+      const e = byKey || (arr[j] && typeof arr[j] === "object" ? arr[j] : null);
+      if (!e) return;
+      it.e = { word: String(e.word || it.w).trim(), pos: String(e.pos || ""), ipa: String(e.ipa || ""), definition: String(e.definition || "").trim(), example: String(e.example || "").trim(), examples: cleanExamples(e.examples) };
+      if (it.e.word && wordKey(it.e.word) !== wordKey(it.w)) it.w = it.e.word;
+      it.k = wordKey(it.w); it.inc = true;
+      if (it.e.definition) filled++;
+    });
+    if (!filled) { note.className = "note err"; note.textContent = "No definitions were found in that answer. Make sure you pasted Claude's answer to this request."; return; }
+    $("#manual").hidden = true;
+    renderPending(); savePendingSoon();
+    const left = toLookUp().length;
+    $("#bNote").className = "note";
+    $("#bNote").textContent = "Filled " + plural(filled, "word") + ". Check them, untick any you don't want, then save." + (left ? " " + plural(left, "word") + " still need definitions." : "");
+  });
+
+  $("#bSave").addEventListener("click", async () => {
+    const note = $("#bNote"); note.className = "note";
+    const items = toSave();
+    if (!items.length) return;
+    if (!col) { note.className = "note err"; note.textContent = "Not connected. Open this page in Claude while signed in."; return; }
+    let deckSel = $("#fDeck").value;
+    const btn = $("#bSave"); btn.disabled = true;
+    let saved = 0;
+    try {
+      if (deckSel === "__new") {
+        const newName = $("#fNewDeck").value.trim().replace(/\s+/g, " ");
+        if (!newName) { note.className = "note err"; note.textContent = "Type a name for the new deck."; $("#fNewDeck").focus(); btn.disabled = false; return; }
+        const existing = nameTaken(newName);
+        deckSel = existing ? existing.id : await createDeck(newName);
+        $("#fNewDeck").value = ""; pendingDeck = deckSel;
+      }
+      const deckId = deckExists(deckSel) || deckSel.startsWith("d") ? deckSel : DEFAULT_ID;
+      addDeck = deckId; lsSet("lexicard.addDeck", deckId);
+      const base = Date.now();
+      for (let i = 0; i < items.length; i++) {
+        const it = items[i], e = it.e;
+        if (dupOf(it.w, deckId)) continue;
+        let id = newId("w"); while (words.has(id)) id = newId("w");
+        await col.doc(id).set({ word: it.w.trim(), pos: e.pos.trim(), ipa: e.ipa.trim(), definition: e.definition.trim(), example: (e.example || "").trim(), examples: cleanExamples(e.examples), deckId, createdAt: base + i, updatedAt: base, reviews: 0 });
+        saved++;
+        btn.textContent = "Saving " + saved + " of " + items.length + "…";
+      }
+      // keep only words that still need a lookup; saved, unticked and duplicate words leave the list
+      pending = pending.filter((it) => !it.e && !itemStatus(it).dup || (it.e && !it.e.definition));
+      toast("Saved " + plural(saved, "word") + " to “" + deckName(deckId) + "”");
+      note.textContent = "";
+    } catch (e) {
+      note.className = "note err";
+      note.textContent = (saved ? "Saved " + plural(saved, "word") + ", then stopped. " : "") + (e && e.code === "quota_exceeded" ? "Storage is full." : "Check your connection and try the rest again.");
+      const savedSet = new Set(items.slice(0, saved));
+      pending = pending.filter((it) => !savedSet.has(it));
+    } finally { btn.disabled = false; renderPending(); savePendingSoon(); }
+  });
+
+  // ---------- stats ----------
+  function reviewsByDay() {
+    const byDay = new Map();
+    for (const w of all()) for (const h of (Array.isArray(w.hist) ? w.hist : [])) { const d = Math.floor(h / 10); byDay.set(d, (byDay.get(d) || 0) + 1); }
+    return byDay;
+  }
+  function streakOf(byDay, today) {
+    let d = today; if (!byDay.has(d)) d--;
+    let n = 0; while (byDay.has(d)) { n++; d--; }
+    return n;
+  }
+  function renderStats() {
+    const today = dayIndex(Date.now()), byDay = reviewsByDay();
+    let good = 0, tot = 0;
+    for (const w of all()) for (const h of (Array.isArray(w.hist) ? w.hist : [])) { if (today - Math.floor(h / 10) < 30) { tot++; if (h % 10 === 3) good++; } }
+    const streak = streakOf(byDay, today);
+    $("#stStreak").textContent = streak;
+    $("#stStreakLbl").textContent = streak === 1 ? "day in a row" : "days in a row";
+    $("#stToday").textContent = byDay.get(today) || 0;
+    $("#stRate").textContent = tot ? Math.round(good / tot * 100) + "%" : "–";
+    $("#stKnown").textContent = all().filter(wellKnown).length;
+    const weeks = 18, dow = (new Date(today * DAY).getUTCDay() + 6) % 7, start = today - dow - (weeks - 1) * 7;
+    let html = "";
+    for (let d = start; d < start + weeks * 7; d++) {
+      if (d > today) { html += '<i class="future"></i>'; continue; }
+      const n = byDay.get(d) || 0, lv = n === 0 ? 0 : n <= 5 ? 1 : n <= 15 ? 2 : n <= 30 ? 3 : 4;
+      const label = new Date(d * DAY).toLocaleDateString("en-GB", { timeZone: "UTC", day: "numeric", month: "short" });
+      html += '<i class="h' + lv + '" title="' + label + ": " + plural(n, "review") + '"></i>';
+    }
+    $("#heat").innerHTML = html;
+    const hw = $("#heatWrap"); hw.scrollLeft = hw.scrollWidth;
+  }
+
+  // ---------- list ----------
+  function renderList() {
+    if (loaded) renderStats();
+    const pool = wordsIn(listDeck);
+    const due = studyable(listDeck).count, known = pool.filter(wellKnown).length;
+    $("#sTotal").textContent = pool.length; $("#sDue").textContent = due; $("#sKnown").textContent = known;
+    const q = norm($("#search").value);
+    const showDeck = listDeck === "all" && deckList().length > 1;
+    const shown = pool
+      .filter((w) => !q || norm(w.word).includes(q) || norm(w.definition).includes(q))
+      .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    const ul = $("#list");
+    shownIds = shown.map((w) => w.id);
+    ul.classList.toggle("selecting", selectMode);
+    $("#listCount").textContent = loaded && pool.length ? plural(shown.length, "word") + (q ? " found" : "") : "";
+    $("#selectBtn").hidden = !loaded || !pool.length || selectMode;
+    updateMoveBar();
+    if (offline) { ul.innerHTML = '<li class="empty">Open this page in Claude while signed in to see your words.</li>'; return; }
+    if (!loaded) { ul.innerHTML = '<li class="empty">Loading your words…</li>'; return; }
+    if (!words.size) { ul.innerHTML = '<li class="empty">No words yet. Add one from the <b>Add word</b> tab.</li>'; return; }
+    if (!pool.length) { ul.innerHTML = '<li class="empty">“' + esc(deckName(listDeck)) + '” has no words yet.</li>'; return; }
+    if (!shown.length) { ul.innerHTML = '<li class="empty">No words match “' + esc($("#search").value) + '”.</li>'; return; }
+    ul.innerHTML = shown.map((w) => {
+      const b = levelOf(w), stg = stageOf(w);
+      const dots = [1, 2, 3, 4, 5, 6].map((i) => '<i class="' + (b >= i ? "on" : "") + '"></i>').join("");
+      const sel = selectMode && selected.has(w.id);
+      return '<li class="item' + (sel ? " selected" : "") + '"><button data-id="' + esc(w.id) + '"' + (selectMode ? ' aria-pressed="' + sel + '"' : "") + ">" + (selectMode ? '<span class="ck" aria-hidden="true">✓</span>' : "") + '<span class="w">' + esc(w.word) + (w.pos ? "<small>" + esc(w.pos) + "</small>" : "") +
+        '</span><span class="lvl" title="' + stg + '" aria-label="' + stg + '">' + dots + '</span><span class="d">' +
+        (showDeck ? '<span class="dk" style="--dc:' + deckColor(deckIdOf(w)) + '">' + esc(deckName(deckIdOf(w))) + "</span>" : "") + esc(w.definition) + "</span></button></li>";
+    }).join("");
+  }
+  $("#list").addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-id]"); if (!b) return;
+    if (!selectMode) { editWord(b.dataset.id); return; }
+    const id = b.dataset.id;
+    if (selected.has(id)) selected.delete(id); else selected.add(id);
+    const on = selected.has(id);
+    b.closest(".item").classList.toggle("selected", on); b.setAttribute("aria-pressed", String(on));
+    updateMoveBar();
+  });
+
+  // ---------- move chosen words to another deck ----------
+  let selectMode = false, shownIds = [];
+  const selected = new Set();
+  function enterSelect() {
+    selectMode = true; selected.clear();
+    $("#moveBar").hidden = false; document.body.classList.add("has-bar");
+    const decks = deckList();
+    const firstOther = decks.find((d) => d.id !== listDeck) || decks[0];
+    fillSelect($("#moveTo"), decks, firstOther.id);
+    $("#mbMoveRow").hidden = decks.length < 2;
+    disarmDel();
+    renderList();
+  }
+  function exitSelect() {
+    if (!selectMode) return;
+    selectMode = false; selected.clear(); disarmDel();
+    $("#moveBar").hidden = true; document.body.classList.remove("has-bar");
+    renderList();
+  }
+  function updateMoveBar() {
+    if (!selectMode) return;
+    for (const id of [...selected]) if (!words.has(id)) selected.delete(id);
+    const n = selected.size;
+    $("#mbCount").textContent = n ? plural(n, "word") + " selected" : "Tap words to choose them";
+    $("#mbMove").disabled = !n;
+    $("#mbMove").textContent = n ? "Move " + n : "Move";
+    $("#mbDel").disabled = !n;
+    if (!$("#mbDel").classList.contains("armed")) $("#mbDel").textContent = n ? "Delete " + n : "Delete";
+    else if (!n) disarmDel();
+    const allOn = shownIds.length && shownIds.every((id) => selected.has(id));
+    $("#mbAll").textContent = allOn ? "Clear selection" : "Select all";
+  }
+  $("#selectBtn").addEventListener("click", enterSelect);
+  // Delete asks for a second tap, because deleted words and their progress can't be brought back
+  let delArmT = null;
+  function disarmDel() { const b = $("#mbDel"); b.classList.remove("armed"); clearTimeout(delArmT); const n = selected.size; b.textContent = n ? "Delete " + n : "Delete"; }
+  $("#mbDel").addEventListener("click", async () => {
+    const b = $("#mbDel");
+    const ids = [...selected].filter((id) => words.has(id));
+    if (!ids.length || !col) return;
+    if (!b.classList.contains("armed")) {
+      b.classList.add("armed"); b.textContent = "Tap again to delete " + plural(ids.length, "word");
+      delArmT = setTimeout(disarmDel, 4000); return;
+    }
+    clearTimeout(delArmT); b.disabled = true;
+    let done = 0;
+    try {
+      for (const id of ids) { await col.doc(id).delete(); done++; b.textContent = "Deleting " + done + "…"; }
+      toast("Deleted " + plural(done, "word"));
+      b.classList.remove("armed");
+      exitSelect();
+    } catch (e) {
+      toast((done ? "Deleted " + plural(done, "word") + ", then stopped. " : "") + "Check your connection and try again.");
+      b.disabled = false; disarmDel(); renderList();
+    }
+  });
+  $("#mbCancel").addEventListener("click", exitSelect);
+  $("#mbAll").addEventListener("click", () => {
+    const allOn = shownIds.length && shownIds.every((id) => selected.has(id));
+    if (allOn) shownIds.forEach((id) => selected.delete(id)); else shownIds.forEach((id) => selected.add(id));
+    renderList();
+  });
+  $("#mbMove").addEventListener("click", async () => {
+    const target = $("#moveTo").value;
+    const ids = [...selected].filter((id) => words.has(id));
+    if (!ids.length || !col) return;
+    const btn = $("#mbMove"); btn.disabled = true;
+    let moved = 0, already = 0, skipped = [];
+    try {
+      for (const id of ids) {
+        const w = words.get(id);
+        if (!w) continue;
+        if (deckIdOf(w) === target) { already++; continue; }
+        const k = wordKey(w.word);
+        // only one copy of a word per deck
+        if (all().some((o) => o.id !== id && deckIdOf(o) === target && wordKey(o.word) === k)) { skipped.push(w.word); continue; }
+        await writeDoc(id, { deckId: target }, true);
+        words.set(id, { ...w, deckId: target });
+        moved++;
+        btn.textContent = "Moving " + moved + "…";
+      }
+      let msg = "Moved " + plural(moved, "word") + " to “" + deckName(target) + "”";
+      if (skipped.length) msg += ". Skipped " + skipped.length + " already in that deck (" + skipped.slice(0, 3).join(", ") + (skipped.length > 3 ? "…" : "") + ")";
+      else if (already && !moved) msg = "Those words are already in “" + deckName(target) + "”";
+      toast(msg);
+      exitSelect();
+    } catch (e) {
+      toast((moved ? "Moved " + plural(moved, "word") + ", then stopped. " : "") + "Check your connection and try again.");
+      btn.disabled = false; renderList();
+    }
+  });
+  $("#search").addEventListener("input", renderList);
+  $("#wDeck").addEventListener("change", () => { listDeck = $("#wDeck").value; renderList(); });
+
+  function updateBadges() {
+    const due = studyable("all").count;
+    const badge = $("#dueBadge"); badge.textContent = due; badge.hidden = !loaded || due === 0;
+  }
+
+  function onData() {
+    updateBadges();
+    renderDeckSelects();
+    if (view === "words") renderList();
+    if (view === "decks" && !renamingId && !deckBusy) renderDecks();
+    if (view === "study") {
+      renderChips();
+      if (sessionActive) {
+        if (current && !words.has(current.id)) next();
+        else if (current) current = words.get(current.id);
+      } else startSession(false);
+    }
+  }
+
+  // ---------- settings ----------
+  let profileRef = null;
+  function renderSettings() {
+    $("#setNew").value = String(settings.newPerDay);
+    $("#setRet").value = String(settings.retention);
+    $("#setVary").checked = settings.varyExamples !== false;
+  }
+  async function saveSettings() {
+    const next = { newPerDay: parseInt($("#setNew").value, 10) || 0, retention: parseFloat($("#setRet").value) || 0.9, varyExamples: $("#setVary").checked };
+    settings = next;
+    onData();
+    if (!profileRef) { $("#setNote").textContent = "Not connected, so this change is only kept until you reload."; return; }
+    try { await profileRef.set(next); toast("Settings saved"); $("#setNote").textContent = ""; }
+    catch (e) { $("#setNote").textContent = "Couldn't save settings. Check your connection."; }
+  }
+  $("#setNew").addEventListener("change", saveSettings);
+  $("#setRet").addEventListener("change", saveSettings);
+  $("#setVary").addEventListener("change", saveSettings);
+  renderSettings();
+
+  // ---------- your own Claude API key ----------
+  function renderApi() {
+    const k = window.LexicardLocal.apiKey();
+    $("#apiNote").className = "note";
+    $("#apiNote").textContent = k ? "A key ending in …" + k.slice(-4) + " is saved on this device." : "No key saved. Definitions come from the free Claude chat.";
+    $("#apiRemove").hidden = !k; $("#apiTest").hidden = !k;
+  }
+  $("#apiSave").addEventListener("click", () => {
+    const v = $("#apiKey").value.trim();
+    if (!/^sk-ant-/.test(v)) { $("#apiNote").className = "note err"; $("#apiNote").textContent = "That doesn't look like a Claude API key. Keys start with sk-ant-."; return; }
+    lsSet(window.LexicardLocal.KEY, v);
+    $("#apiNote").textContent = "Key saved. Reloading…";
+    setTimeout(() => location.reload(), 600);
+  });
+  $("#apiRemove").addEventListener("click", () => {
+    try { localStorage.removeItem(window.LexicardLocal.KEY); } catch (e) {}
+    $("#apiNote").textContent = "Key removed. Reloading…";
+    setTimeout(() => location.reload(), 600);
+  });
+  $("#apiTest").addEventListener("click", async () => {
+    const note = $("#apiNote"); note.className = "note"; note.textContent = "Testing…";
+    try { await window.LexicardLocal.callClaude("Reply with the single word: ready", 20); note.textContent = "The key works."; }
+    catch (e) { note.className = "note err"; note.textContent = sampleErrText(e); }
+  });
+  renderApi();
+
+  // ---------- backup and restore ----------
+  let downloader = null, restorePlan = null;
+  function renderLastBackup() {
+    const t = parseInt(lsGet("lexicard.lastBackup") || "0", 10);
+    $("#lastBackup").textContent = t ? "Last backup from this device: " + new Date(t).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }) + "." : "No backup downloaded from this device yet.";
+  }
+  function backupJSON() {
+    const wordsOut = all().map((w) => { const o = { ...w }; return o; });
+    return JSON.stringify({
+      app: "Lexicard", version: 1, exportedAt: new Date().toISOString(),
+      settings,
+      decks: deckList().map((d) => ({ id: d.id, name: d.name, color: Number.isInteger(d.color) ? d.color : null, createdAt: d.createdAt || 0 })),
+      words: wordsOut
+    });
+  }
+  $("#backupBtn").addEventListener("click", async () => {
+    const note = $("#backupNote"); note.className = "note"; note.textContent = "";
+    if (!loaded) { note.className = "note err"; note.textContent = "Your words haven't loaded yet. Open this page in Claude while signed in."; return; }
+    const json = backupJSON();
+    const d = new Date(), pad = (n) => String(n).padStart(2, "0");
+    const filename = "lexicard-backup-" + d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()) + ".json";
+    if (downloader) {
+      try {
+        await downloader.save({ filename, data: json });
+        lsSet("lexicard.lastBackup", String(Date.now())); renderLastBackup();
+        toast("Backup saved: " + plural(words.size, "word"));
+        return;
+      } catch (e) {
+        const c = e && e.code;
+        if (c === "declined") { note.textContent = "Download cancelled."; return; }
+        if (c === "rate_limited") { note.textContent = "A download is already waiting for your answer."; return; }
+      }
+    }
+    // Downloads aren't available in this view: copy the backup instead
+    try {
+      await navigator.clipboard.writeText(json);
+      lsSet("lexicard.lastBackup", String(Date.now())); renderLastBackup();
+      note.textContent = "Downloading isn't available here, so the backup was copied. Paste it into a note or a text file and save it as a .json file.";
+    } catch (e) {
+      note.className = "note err";
+      note.textContent = "Downloading isn't available here. Open Lexicard in the Claude app or at claude.ai and try again.";
+    }
+  });
+
+  function readFileText(f) {
+    if (typeof f.text === "function") return f.text();
+    return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result)); r.onerror = () => rej(r.error); r.readAsText(f); });
+  }
+  $("#restoreLbl").addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); $("#restoreFile").click(); } });
+  $("#restoreFile").addEventListener("change", async () => {
+    const f = $("#restoreFile").files && $("#restoreFile").files[0];
+    $("#restoreFile").value = "";
+    const note = $("#backupNote"); note.className = "note"; note.textContent = "";
+    if (!f) return;
+    if (!col || !loaded) { note.className = "note err"; note.textContent = "Your words haven't loaded yet. Open this page in Claude while signed in."; return; }
+    let data;
+    try { data = JSON.parse(await readFileText(f)); } catch (e) { note.className = "note err"; note.textContent = "That file isn't a Lexicard backup. Choose the .json file you downloaded."; return; }
+    if (!data || data.app !== "Lexicard" || !Array.isArray(data.words)) { note.className = "note err"; note.textContent = "That file isn't a Lexicard backup. Choose the .json file you downloaded."; return; }
+    // Decks: reuse a deck with the same id or the same name, create the rest
+    const deckMap = new Map(), newDecks = [];
+    for (const bd of (Array.isArray(data.decks) ? data.decks : [])) {
+      if (!bd || typeof bd.id !== "string" || !bd.name) continue;
+      if (bd.id === DEFAULT_ID || deckExists(bd.id)) { deckMap.set(bd.id, bd.id); continue; }
+      const same = nameTaken(String(bd.name));
+      if (same) { deckMap.set(bd.id, same.id); continue; }
+      deckMap.set(bd.id, bd.id); newDecks.push(bd);
+    }
+    // Words: add the ones that aren't already in their deck; nothing is overwritten or deleted
+    const toAdd = [], seen = new Set(all().map((w) => (deckIdOf(w)) + "|" + wordKey(w.word)));
+    let skipped = 0;
+    for (const bw of data.words) {
+      if (!bw || typeof bw.word !== "string" || !bw.word.trim()) continue;
+      const deckId = deckMap.get(bw.deckId) || (bw.deckId && deckExists(bw.deckId) ? bw.deckId : DEFAULT_ID);
+      const key = deckId + "|" + wordKey(bw.word);
+      if (seen.has(key)) { skipped++; continue; }
+      seen.add(key);
+      toAdd.push({ ...bw, deckId });
+    }
+    restorePlan = { newDecks, toAdd };
+    const when = data.exportedAt ? new Date(data.exportedAt).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }) : "an unknown date";
+    $("#restoreText").textContent = "Backup from " + when + " with " + plural(data.words.length, "word") + ". " +
+      (toAdd.length ? plural(toAdd.length, "word") + " will be added" + (newDecks.length ? " and " + plural(newDecks.length, "deck") + " created" : "") + ". " : "All of these words are already here. ") +
+      (skipped ? (skipped === 1 ? "1 word that's already here stays as it is. " : skipped + " words that are already here stay as they are. ") : "") + "Nothing will be deleted or overwritten.";
+    $("#restoreGo").hidden = !toAdd.length && !newDecks.length;
+    $("#restoreBox").hidden = false;
+  });
+  $("#restoreCancel").addEventListener("click", () => { restorePlan = null; $("#restoreBox").hidden = true; });
+  $("#restoreGo").addEventListener("click", async () => {
+    if (!restorePlan) return;
+    const { newDecks, toAdd } = restorePlan;
+    const btn = $("#restoreGo"), note = $("#backupNote"); btn.disabled = true;
+    let added = 0;
+    try {
+      for (const bd of newDecks) await decksCol.doc(bd.id).set({ name: String(bd.name), createdAt: bd.createdAt || Date.now(), color: Number.isInteger(bd.color) ? bd.color : 1 });
+      for (const bw of toAdd) {
+        const { id: oldId, ...body } = bw;
+        let id = typeof oldId === "string" && /^[A-Za-z0-9_.~:@+-]{1,150}$/.test(oldId) && !words.has(oldId) && oldId !== "profile" ? oldId : newId("w");
+        while (words.has(id)) id = newId("w");
+        await col.doc(id).set(body);
+        added++;
+        btn.textContent = "Restoring " + added + " of " + toAdd.length + "…";
+      }
+      toast("Restored " + plural(added, "word"));
+      note.className = "note"; note.textContent = "";
+      $("#restoreBox").hidden = true; restorePlan = null;
+    } catch (e) {
+      note.className = "note err";
+      note.textContent = (added ? "Restored " + plural(added, "word") + ", then stopped. Choose the file again to add the rest. " : "") + (e && e.code === "quota_exceeded" ? "Storage is full." : "Check your connection and try again.");
+    } finally { btn.disabled = false; btn.textContent = "Restore"; }
+  });
+  renderLastBackup();
+
+  // ---------- theme ----------
+  function applyMode(m) {
+    document.documentElement.setAttribute("data-mode", m);
+    const b = $("#themeBtn");
+    b.setAttribute("aria-label", m === "dark" ? "Switch to day theme" : "Switch to night theme");
+    b.title = m === "dark" ? "Day theme" : "Night theme";
+  }
+  applyMode(lsGet("lexicard.mode") === "dark" ? "dark" : "light");
+  $("#themeBtn").addEventListener("click", () => {
+    const m = document.documentElement.getAttribute("data-mode") === "dark" ? "light" : "dark";
+    applyMode(m); lsSet("lexicard.mode", m);
+  });
+
+
+  try { loadPendingFrom(JSON.parse(lsGet("lexicard.pending") || "[]")); } catch (e) {}
+  renderPending();
+
+  // ---------- boot ----------
+  paintCard(EXAMPLE, true);
+  $("#flipActions").hidden = true;
+  renderDeckSelects();
+  const saved = lsGet("lexicard.view");
+  show(VIEWS.includes(saved) ? saved : "study");
+
+  function goOffline() {
+    offline = true; loaded = false;
+    setSync("off", "Not connected");
+    renderChips(); renderStudy(); renderList(); renderDecks();
+  }
+
+  (async () => {
+    const C = window.claude;
+    if (!C || typeof C.use !== "function") { goOffline(); return; }
+    const [dbNs, userNs, smp, dl] = await Promise.all([
+      C.use("db").catch(() => null), C.use("user").catch(() => null), C.use("sample").catch(() => null), C.use("downloads").catch(() => null)
+    ]);
+    sampler = smp; downloader = dl;
+    $("#fillBtn").hidden = !sampler;
+    let uid = null;
+    try { uid = userNs ? await userNs.id() : null; } catch (e) { uid = null; }
+    if (!dbNs || !uid) { goOffline(); return; }
+    db = dbNs;
+    col = db.collection("data/users/" + uid);
+    profileRef = db.doc("data/users/" + uid + "/profile");
+    decksCol = profileRef.collection("decks");
+    setSync("busy", "Loading…");
+    const onErr = (err) => {
+      setSync("off", "Sync stopped");
+      toast(err && err.code === "revoked" ? "Access to this page changed. Reload to continue." : "Sync stopped. Reload the page to reconnect.");
+    };
+    pendingRef = profileRef.collection("meta").doc("pending");
+    pendingRef.onSnapshot((snap) => {
+      if (snap.metadata.hasPendingWrites) return;
+      const items = snap.exists && Array.isArray(snap.data().items) ? snap.data().items : [];
+      const j = JSON.stringify(items);
+      if (j === pendingRemoteJSON) return;
+      pendingRemoteJSON = j;
+      if ($("#pList").contains(document.activeElement)) return; // don't disturb typing
+      loadPendingFrom(items);
+      if (view === "add" && addMode === "many") renderPending(); else updatePendingButtons();
+    }, onErr);
+    profileRef.onSnapshot((snap) => {
+      const v = snap.exists ? snap.data() : {};
+      settings = {
+        newPerDay: Number.isInteger(v.newPerDay) && v.newPerDay >= 0 ? v.newPerDay : 20,
+        retention: [0.85, 0.9, 0.95].includes(v.retention) ? v.retention : 0.9,
+        varyExamples: v.varyExamples !== false
+      };
+      renderSettings();
+      if (loaded) { onData(); if (view === "study" && !sessionActive) renderStudy(); }
+    }, onErr);
+    decksCol.limit(500).onSnapshot((snap) => {
+      deckDocs.clear();
+      for (const d of snap.docs) if (d.exists) deckDocs.set(d.id, { id: d.id, ...d.data() });
+      decksLoaded = true;
+      if (loaded) {
+        if (studyDeck !== "all" && !deckExists(studyDeck) && view === "study") { studyDeck = "all"; lsSet("lexicard.studyDeck", "all"); sessionActive = false; }
+        onData();
+        if (view === "study" && !sessionActive) renderStudy();
+      }
+    }, onErr);
+    col.limit(1000).onSnapshot((snap) => {
+      words.clear();
+      for (const d of snap.docs) if (d.exists) words.set(d.id, { id: d.id, ...d.data() });
+      loaded = true;
+      setSync(snap.metadata.hasPendingWrites ? "busy" : "ok", snap.metadata.hasPendingWrites ? "Saving…" : "Saved on this device");
+      onData();
+      if (view === "study" && !sessionActive) renderStudy();
+    }, onErr);
+  })();
+})();
+</script>
+<script>
+  // Offline support and "install" on the home screen
+  if ("serviceWorker" in navigator && location.protocol === "https:") {
+    window.addEventListener("load", () => { navigator.serviceWorker.register("sw.js").catch(() => {}); });
+  }
+</script>
+</body>
+</html>
