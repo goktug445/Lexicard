@@ -682,14 +682,49 @@ body.has-bar .toast { bottom: calc(130px + env(safe-area-inset-bottom, 0px)); }
   // ----- Claude through your own API key (optional) -----
   const KEY = "lexicard.apiKey", MODEL = "claude-haiku-5-5";
   function apiKey() { try { return localStorage.getItem(KEY) || ""; } catch (e) { return ""; } }
+  // Reads Claude's answer however it was copied: with or without the ``` code block, with text around it,
+  // with phone-style spaces or curly quotes, with trailing commas, or cut off part way through.
   function parseJSONLoose(text) {
-    text = String(text || "").trim();
-    try { return JSON.parse(text); } catch (e) {}
-    const fence = text.match(/```(?:json)?\s*([\s\S]*?)```/);
-    if (fence) { try { return JSON.parse(fence[1]); } catch (e) {} }
-    const i = text.search(/[\[{]/), j = Math.max(text.lastIndexOf("]"), text.lastIndexOf("}"));
-    if (i >= 0 && j > i) { try { return JSON.parse(text.slice(i, j + 1)); } catch (e) {} }
-    throw { code: "invalid_json", message: "The answer couldn't be read", text };
+    const raw = String(text || "");
+    const clean = (t) => t
+      .replace(/[    - 　]/g, " ")   // non-breaking and other odd spaces from phone copy
+      .replace(/[​-‍⁠﻿]/g, "")                  // invisible characters
+      .replace(/\r\n?/g, "\n").trim();
+    const fixCommas = (t) => t.replace(/,\s*([\]}])/g, "$1");
+    const curly = (t) => t.replace(/[“”„‟″]/g, '"');
+    const tryParse = (t) => {
+      for (const v of [t, fixCommas(t), curly(t), fixCommas(curly(t))]) { try { return { ok: true, v: JSON.parse(v) }; } catch (e) {} }
+      return { ok: false };
+    };
+    const base = clean(raw), cands = [base];
+    for (const m of base.matchAll(/```[a-zA-Z]*\s*([\s\S]*?)(?:```|$)/g)) cands.push(m[1].trim());
+    const last = Math.max(base.lastIndexOf("]"), base.lastIndexOf("}"));
+    for (let i = 0; i < base.length && cands.length < 40; i++) {
+      if ((base[i] === "[" || base[i] === "{") && last > i) cands.push(base.slice(i, last + 1));
+    }
+    for (const c of cands) {
+      const r = tryParse(c);
+      if (r.ok && r.v && typeof r.v === "object") return r.v;
+    }
+    // Last resort: pick out every complete { ... } entry that has a "word", even if the rest is broken or cut off
+    const out = [], src = curly(base);
+    let depth = 0, start = -1, inStr = false, escp = false;
+    for (let i = 0; i < src.length; i++) {
+      const ch = src[i];
+      if (inStr) { if (escp) escp = false; else if (ch === "\\") escp = true; else if (ch === '"') inStr = false; continue; }
+      if (ch === '"') inStr = true;
+      else if (ch === "{") { if (depth === 0) start = i; depth++; }
+      else if (ch === "}" && depth > 0) {
+        depth--;
+        if (depth === 0 && start >= 0) {
+          const r = tryParse(src.slice(start, i + 1));
+          if (r.ok && r.v && typeof r.v === "object" && r.v.word) out.push(r.v);
+          start = -1;
+        }
+      }
+    }
+    if (out.length) return out;
+    throw { code: "invalid_json", message: "The answer couldn't be read", text: raw };
   }
   async function callClaude(prompt, maxTokens) {
     const key = apiKey();
@@ -1808,7 +1843,12 @@ body.has-bar .toast { bottom: calc(130px + env(safe-area-inset-bottom, 0px)); }
     const note = $("#mNote"); note.className = "note";
     let arr;
     try { arr = window.LexicardLocal.parseJSONLoose($("#mPaste").value); }
-    catch (e) { note.className = "note err"; note.textContent = "That doesn't look like Claude's answer. Copy the whole answer, including the [ ] brackets, and paste it again."; return; }
+    catch (e) {
+      note.className = "note err";
+      note.textContent = !$("#mPaste").value.trim() ? "Paste Claude's answer into the box first." :
+        "Lexicard couldn't find the word entries in that text. In the Claude app, use the copy button under Claude's answer (or the copy button on the code block) instead of selecting the text, then paste again. If Claude made a file or an artifact instead of answering in the chat, ask it: \"Reply with the JSON in the chat\".";
+      return;
+    }
     if (!Array.isArray(arr)) arr = arr && Array.isArray(arr.entries) ? arr.entries : [];
     const items = manualIds.map((id) => pendingById(id)).filter(Boolean);
     let filled = 0;
@@ -1826,7 +1866,7 @@ body.has-bar .toast { bottom: calc(130px + env(safe-area-inset-bottom, 0px)); }
     renderPending(); savePendingSoon();
     const left = toLookUp().length;
     $("#bNote").className = "note";
-    $("#bNote").textContent = "Filled " + plural(filled, "word") + ". Check them, untick any you don't want, then save." + (left ? " " + plural(left, "word") + " still need definitions." : "");
+    $("#bNote").textContent = "Filled " + plural(filled, "word") + ". Check them, untick any you don't want, then save." + (left ? " " + plural(left, "word") + " still need definitions: press Get definitions again for them." : "");
   });
 
   $("#bSave").addEventListener("click", async () => {
